@@ -18,8 +18,6 @@ jobs:
         uses: turtlequeue/setup-babashka@v1.7.0
         with:
           babashka-version: 1.12.196
-      - name: npm install
-        run: npm i
       - name: get ouraring data
         env:
           NODE_TLS_REJECT_UNAUTHORIZED: '0'
