@@ -15,8 +15,10 @@
    :password (System/getenv "SUPABASE_PASSWORD")
    :sslmode "require"})
 
+(def daily-activity-table-name "ouraring_daily_activity")
+
 (def schema
-  ["CREATE TABLE IF NOT EXISTS daily_activity (
+  [(str "CREATE TABLE IF NOT EXISTS " daily-activity-table-name " (
      date DATE PRIMARY KEY,
      class_5_min TEXT,
      score INTEGER,
@@ -43,7 +45,7 @@
      total_calories INTEGER,
      day_summary TEXT,
      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   )"])
+   )")])
 
 (defn ensure-db []
   (pg/execute! db-spec [(first schema)]))
@@ -53,7 +55,7 @@
                      (json/parse-string true)
                      :data
                      first)]
-    {:date (str "'" (:day activity) "'::date")
+    {:date (:day activity)
      :class_5_min (json/generate-string (:class_5_min activity))
      :score (:score activity)
      :active_calories (:active_calories activity)
@@ -81,20 +83,12 @@
 
 (defn activity-exists? [date]
   (-> (pg/execute! db-spec
-                   ["SELECT EXISTS(SELECT 1 FROM daily_activity WHERE date = ?::date)" date])
+                   [(str "SELECT EXISTS(SELECT 1 FROM " daily-activity-table-name " WHERE date = ?::date)") date])
       first
       :exists))
 
 (defn edit-activity [normalized date]
-  (let [sql-columns ["date" "class_5_min" "score" "active_calories" "average_met"
-                     "daily_movement" "equivalent_walking_distance" "high_activity_met_minutes"
-                     "high_activity_time" "inactivity_alerts" "low_activity_met_minutes"
-                     "low_activity_time" "medium_activity_met_minutes" "medium_activity_time"
-                     "met" "meters_to_target" "non_wear_time" "resting_time"
-                     "sedentary_met_minutes" "sedentary_time" "steps" "target_calories"
-                     "target_meters" "total_calories" "day_summary"]
-        values [date
-                (:class_5_min normalized)
+  (let [values [(:class_5_min normalized)
                 (:score normalized)
                 (:active_calories normalized)
                 (:average_met normalized)
@@ -120,15 +114,29 @@
                 (:day_summary normalized)]]
     (if (activity-exists? date)
       ;; Update
-      (let [set-clause (str "SET " (clojure.string/join " = ?, " (rest sql-columns)) " = ?")
-            where-clause "WHERE date = ?::date"
-            sql (str "UPDATE daily_activity " set-clause " " where-clause)]
-        (pg/execute! db-spec (into [sql] (concat (rest values) [date]))))
+      (pg/execute! db-spec
+                   (into [(str "UPDATE " daily-activity-table-name " SET
+                           class_5_min = ?, score = ?, active_calories = ?,
+                           average_met = ?, daily_movement = ?, equivalent_walking_distance = ?,
+                           high_activity_met_minutes = ?, high_activity_time = ?, inactivity_alerts = ?,
+                           low_activity_met_minutes = ?, low_activity_time = ?, medium_activity_met_minutes = ?,
+                           medium_activity_time = ?, met = ?, meters_to_target = ?, non_wear_time = ?,
+                           resting_time = ?, sedentary_met_minutes = ?, sedentary_time = ?, steps = ?,
+                           target_calories = ?, target_meters = ?, total_calories = ?, day_summary = ?
+                         WHERE date = ?::date")]
+                         (conj values date)))
       ;; Insert
-      (let [columns-str (clojure.string/join ", " sql-columns)
-            placeholders (clojure.string/join ", " (repeat (count values) "?"))
-            sql (str "INSERT INTO daily_activity (" columns-str ") VALUES (" placeholders ")")]
-        (pg/execute! db-spec (into [sql] values))))))
+      (pg/execute! db-spec
+                   (into [(str "INSERT INTO " daily-activity-table-name " (
+                           date, class_5_min, score, active_calories, average_met,
+                           daily_movement, equivalent_walking_distance, high_activity_met_minutes,
+                           high_activity_time, inactivity_alerts, low_activity_met_minutes,
+                           low_activity_time, medium_activity_met_minutes, medium_activity_time,
+                           met, meters_to_target, non_wear_time, resting_time,
+                           sedentary_met_minutes, sedentary_time, steps, target_calories,
+                           target_meters, total_calories, day_summary
+                         ) VALUES (?::date, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")]
+                         (cons date values))))))
 
 (defn save-activity [data date]
   (ensure-db)
