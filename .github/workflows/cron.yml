@@ -14,14 +14,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
       - name: Setup Babashka
         uses: turtlequeue/setup-babashka@v1.7.0
         with:
-          babashka-version: 1.0.165
+          babashka-version: 1.12.196
       - name: npm install
         run: npm i
       - name: get ouraring data
