@@ -1,0 +1,3 @@
+{:paths ["src" "src/training_personal_data"]
+ :deps {org.babashka/http-client {:mvn/version "0.4.15"}
+        cheshire/cheshire {:mvn/version "5.12.0"}}}
