@@ -15,8 +15,8 @@
    - start-date: Start date in YYYY-MM-DD format used in filename
    - end-date: End date in YYYY-MM-DD format used in filename
    Returns the filename where data was saved."
-  [data start-date end-date]
-  (let [filename (format "ouraring-%s-%s.json" start-date end-date)]
+  [data start-date]
+  (let [filename (format "ouraring-%s.json" start-date)]
     (spit filename data)
     filename))
 
@@ -54,4 +54,4 @@
         end-date (second args)
         body (get-daily-activity start-date end-date)]
     (println body)
-    (println "save file:" (save-to-json body start-date end-date))))
+    (println "save file:" (save-to-json body start-date))))

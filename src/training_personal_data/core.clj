@@ -13,4 +13,4 @@
         end-date "2024-12-31"
         body (ouraring/get-daily-activity start-date end-date)]
     (println body)
-    (println "save file:" (ouraring/save-to-json body start-date end-date))))
+    (println "save file:" (ouraring/save-to-json body start-date))))
