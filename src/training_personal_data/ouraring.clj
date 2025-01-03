@@ -1,60 +1,110 @@
 (ns training-personal-data.ouraring
-  (:require [babashka.http-client :as http]
-            [training-personal-data.ouraring.db :as db]))
-
-(def host "https://api.ouraring.com/v2")
-(def daily-activity-endpoint "/usercollection/daily_activity")
-(def token
-  (or (System/getenv "OURA_TOKEN")
-      (throw (ex-info "OURA_TOKEN environment variable not set" {}))))
+  "Main namespace for Oura Ring data processing"
+  (:require [training-personal-data.ouraring.api :as api]
+            [training-personal-data.ouraring.db :as db]
+            [clojure.java.io :as io]))
 
 (defn save-to-json
-  "Saves Oura Ring data to a JSON file.
+  "Saves data to a JSON file.
    Parameters:
-   - data: The data to save (response body from Oura Ring API)
-   - start-date: Start date in YYYY-MM-DD format used in filename
-   - end-date: End date in YYYY-MM-DD format used in filename
-   Returns the filename where data was saved."
+   - data: Raw data to save
+   - start-date: Date string used in filename (YYYY-MM-DD)
+   Returns:
+   - Filename where data was saved"
   [data start-date]
   (let [filename (format "ouraring-%s.json" start-date)]
     (spit filename data)
     filename))
 
-(defn get-daily-activity
-  "Retrieves daily activity data from Oura Ring API for a given date range.
+(defn get-db-config
+  "Creates database configuration from environment variables.
+   Returns:
+   - Map with database configuration using environment variables or defaults"
+  []
+  {:dbname (or (System/getenv "SUPABASE_DB_NAME") "postgres")
+   :host (or (System/getenv "SUPABASE_HOST") "127.0.0.1")
+   :port (parse-long (or (System/getenv "SUPABASE_PORT") "5432"))
+   :user (or (System/getenv "SUPABASE_USER") "postgres")
+   :password (or (System/getenv "SUPABASE_PASSWORD") "postgres")
+   :sslmode "require"})
+
+(defn process-activity
+  "Processes and saves activity data.
    Parameters:
-   - start-date: Start date in YYYY-MM-DD format
-   - end-date: End date in YYYY-MM-DD format
-   Returns the response body on success, throws exception on failure."
+   - db-spec: Database connection specification
+   - data: Raw activity data from API
+   Returns:
+   - Normalized activity data"
+  [db-spec data]
+  (let [normalized (api/normalize-activity data)]
+    (db/save-activity db-spec normalized)
+    normalized))
+
+(defn validate-env
+  "Validates required environment variables are set.
+   Throws:
+   - ExceptionInfo if any required variables are missing"
+  []
+  (let [required-vars ["OURA_TOKEN" "SUPABASE_HOST" 
+                      "SUPABASE_USER" "SUPABASE_PASSWORD"]
+        missing-vars (filter #(nil? (System/getenv %)) required-vars)]
+    (when (seq missing-vars)
+      (throw (ex-info "Missing required environment variables" 
+                     {:missing missing-vars})))))
+
+(defn validate-dates
+  "Validates start and end dates are provided.
+   Parameters:
+   - start-date: Start date string
+   - end-date: End date string
+   Throws:
+   - ExceptionInfo if either date is missing"
   [start-date end-date]
-  (let [url (str host daily-activity-endpoint "?start_date=" start-date "&end_date=" end-date)
-        response (http/get url {:headers {"Authorization" (str "Bearer " token)}})
-        status (:status response)
-        body (:body response)]
-    (if (= status 200)
-      body
-      (throw (ex-info "Failed to get daily activity" {:status status :body body}))))) 
+  (when (or (nil? start-date) (nil? end-date))
+    (throw (ex-info "Both start-date and end-date are required"
+                   {:usage "bb -m training-personal-data.ouraring <start-date> <end-date>"}))))
 
 (defn -main
-  "Main function that fetches daily activity data from Oura Ring API
-   for a given date range passed as command line arguments.
+  "Main entry point for the application.
+   Fetches Oura Ring data and saves it to both file and database.
    
    Usage:
-   bb -m training-personal-data.ouraring 2024-01-01 2024-01-31
+   bb -m training-personal-data.ouraring <start-date> <end-date>
+   
+   Environment Variables:
+   - OURA_TOKEN: Oura Ring API token
+   - SUPABASE_*: Database connection details
    
    Arguments:
    - start-date: Start date in YYYY-MM-DD format
-   - end-date: End date in YYYY-MM-DD format
-   
-   Returns:
-   - Prints the raw API data
-   - Prints the path of the saved JSON file containing the data"
+   - end-date: End date in YYYY-MM-DD format"
   [& args]
-  (let [start-date (first args)
-        end-date (second args)
-        body (get-daily-activity start-date end-date)
-        save-db (future (db/save-activity body start-date))
-        save-file (future (save-to-json body start-date))]
-    (println body)
-    @save-db
-    (println "save file:" @save-file)))
+  (try
+    (validate-env)
+    (let [start-date (first args)
+          end-date (second args)]
+      (validate-dates start-date end-date)
+      
+      (let [token (System/getenv "OURA_TOKEN")
+            db-spec (db/make-db-spec (get-db-config))]
+        
+        ;; Ensure database table exists
+        (db/ensure-table db-spec)
+        
+        ;; Fetch and process data
+        (let [{:keys [success? data error]} (api/fetch-daily-activity token start-date end-date)]
+          (if success?
+            (let [save-file-future (future (save-to-json data start-date))
+                  save-db-future (future (process-activity db-spec data))]
+              ;; Aguarda a conclusão dos futures
+              (println "Saving to file...")
+              @save-file-future
+              (println "Saving to database...")
+              @save-db-future
+              (println "All operations completed!"))
+            (throw (ex-info "Failed to fetch data" error))))))
+    (catch Exception e
+      (println "Error:" (ex-message e))
+      (when-let [data (ex-data e)]
+        (println "Details:" data))
+      (System/exit 1))))
