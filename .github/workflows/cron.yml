@@ -9,8 +9,7 @@ on:
 jobs:
   job:
     runs-on: ubuntu-latest
-    environment: bot
-    timeout-minutes: 1
+    environment: main
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,7 +21,6 @@ jobs:
         run: bb prepare
       - name: get ouraring data
         env:
-          NODE_TLS_REJECT_UNAUTHORIZED: '0'
           OURA_TOKEN: '${{ secrets.OURA_TOKEN }}'
         run: |
           START_DATE=$(date '+%Y-%m-%d')
