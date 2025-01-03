@@ -1,6 +1,6 @@
 (ns training-personal-data.ouraring
   (:require [babashka.http-client :as http]
-            [cheshire.core :as json]))
+            [training-personal-data.ouraring.db :as db]))
 
 (def host "https://api.ouraring.com/v2")
 (def daily-activity-endpoint "/usercollection/daily_activity")
@@ -52,6 +52,9 @@
   [& args]
   (let [start-date (first args)
         end-date (second args)
-        body (get-daily-activity start-date end-date)]
+        body (get-daily-activity start-date end-date)
+        save-db (future (db/save-activity body start-date))
+        save-file (future (save-to-json body start-date))]
     (println body)
-    (println "save file:" (save-to-json body start-date))))
+    @save-db
+    (println "save file:" @save-file)))
