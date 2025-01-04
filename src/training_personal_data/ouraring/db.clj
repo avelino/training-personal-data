@@ -1,13 +1,15 @@
 (ns training-personal-data.ouraring.db
   "Database operations for Oura Ring data"
   (:require [babashka.pods :as pods]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [cheshire.core :as json]))
 
 ;; Load PostgreSQL pod
 (pods/load-pod 'org.babashka/postgresql "0.1.0")
 (require '[pod.babashka.postgresql :as pg])
 
 (def ^:private daily-activity-table "ouraring_daily_activity")
+(def ^:private daily-sleep-table "ouraring_daily_sleep")
 
 (defn make-db-spec
   "Creates a database specification map from configuration.
@@ -33,9 +35,7 @@
 (defn test-connection
   "Tests database connection by executing a simple query.
    Parameters:
-   - db-spec: Database connection specification
-   Returns:
-   - true if connection successful, false otherwise"
+   - db-spec: Database connection specification"
   [db-spec]
   (try
     (pg/execute! db-spec ["SELECT 1"])
@@ -190,4 +190,107 @@
         (println "Inserting new activity for date:" date)
         (println "SQL:" (build-insert-sql))
         (println "Values:" (cons date values))
-        (pg/execute! db-spec (into [(build-insert-sql)] (cons date values))))))) 
+        (pg/execute! db-spec (into [(build-insert-sql)] (cons date values)))))))
+
+(defn create-sleep-table-sql []
+  (str "CREATE TABLE IF NOT EXISTS " daily-sleep-table " (
+    date DATE PRIMARY KEY,
+    id TEXT,
+    score INTEGER,
+    deep_sleep INTEGER,
+    efficiency INTEGER,
+    latency INTEGER,
+    rem_sleep INTEGER,
+    restfulness INTEGER,
+    timing INTEGER,
+    total_sleep INTEGER,
+    timestamp TIMESTAMP,
+    contributors_json TEXT,
+    raw_json TEXT
+  )"))
+
+(defn ensure-sleep-table [db-spec]
+  (when (test-connection db-spec)
+    (pg/execute! db-spec [(create-sleep-table-sql)])))
+
+(defn extract-sleep-values
+  "Extracts values from sleep map in the correct order for SQL parameters."
+  [sleep]
+  [(:id sleep)
+   (:score sleep)
+   (get-in sleep [:contributors :deep_sleep])
+   (get-in sleep [:contributors :efficiency])
+   (get-in sleep [:contributors :latency])
+   (get-in sleep [:contributors :rem_sleep])
+   (get-in sleep [:contributors :restfulness])
+   (get-in sleep [:contributors :timing])
+   (get-in sleep [:contributors :total_sleep])
+   (:timestamp sleep)
+   (json/generate-string (:contributors sleep))
+   (json/generate-string sleep)])
+
+(defn sleep-exists?
+  "Checks if a sleep record exists for the given date."
+  [db-spec date]
+  (-> (pg/execute! db-spec
+                   [(str "SELECT EXISTS(SELECT 1 FROM " daily-sleep-table " WHERE date = ?::date)") date])
+      first
+      :exists))
+
+(defn build-sleep-update-sql
+  "Builds SQL for updating an existing sleep record."
+  []
+  (let [columns ["id" "score" "deep_sleep" "efficiency" "latency" "rem_sleep"
+                 "restfulness" "timing" "total_sleep" "timestamp"
+                 "contributors_json" "raw_json"]
+        set-pairs (map-indexed (fn [idx col]
+                                (if (= col "timestamp")
+                                  (str col " = ?::timestamp")
+                                  (str col " = ?")))
+                              columns)
+        set-clause (str/join ", " set-pairs)]
+    (str "UPDATE " daily-sleep-table
+         " SET " set-clause
+         " WHERE date = ?::date")))
+
+(defn build-sleep-insert-sql
+  "Builds SQL for inserting a new sleep record."
+  []
+  (let [columns (str/join ", " (cons "date" ["id" "score" "deep_sleep" "efficiency"
+                                            "latency" "rem_sleep" "restfulness"
+                                            "timing" "total_sleep" "timestamp"
+                                            "contributors_json" "raw_json"]))
+        placeholders (str/join ", " [(str "?::date")  ;; date
+                                   "?"                ;; id
+                                   "?"                ;; score
+                                   "?"                ;; deep_sleep
+                                   "?"                ;; efficiency
+                                   "?"                ;; latency
+                                   "?"                ;; rem_sleep
+                                   "?"                ;; restfulness
+                                   "?"                ;; timing
+                                   "?"                ;; total_sleep
+                                   "?::timestamp"     ;; timestamp
+                                   "?"                ;; contributors_json
+                                   "?"])]            ;; raw_json
+    (str "INSERT INTO " daily-sleep-table " (" columns ") VALUES (" placeholders ")")))
+
+(defn save-sleep
+  "Saves or updates a sleep record in the database.
+   Parameters:
+   - db-spec: Database connection specification
+   - sleep: Map containing sleep data with :date and other fields"
+  [db-spec sleep]
+  (println "Attempting to save sleep for date:" (:date sleep))
+  (let [date (:date sleep)
+        values (extract-sleep-values sleep)]
+    (println "Sleep exists check for date:" date)
+    (if (sleep-exists? db-spec date)
+      (do
+        (println "Updating existing sleep for date:" date)
+        (pg/execute! db-spec (into [(build-sleep-update-sql)] (conj values date))))
+      (do
+        (println "Inserting new sleep for date:" date)
+        (println "SQL:" (build-sleep-insert-sql))
+        (println "Values:" (cons date values))
+        (pg/execute! db-spec (into [(build-sleep-insert-sql)] (cons date values))))))) 

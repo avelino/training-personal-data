@@ -5,6 +5,7 @@
 
 (def ^:private host "https://api.ouraring.com/v2")
 (def ^:private daily-activity-endpoint "/usercollection/daily_activity")
+(def ^:private daily-sleep-endpoint "/usercollection/daily_sleep")
 
 (defn build-url
   "Builds the API URL for fetching daily activity data.
@@ -80,4 +81,47 @@
      :target_calories (:target_calories activity)
      :target_meters (:target_meters activity)
      :total_calories (:total_calories activity)
-     :day_summary (json/generate-string activity)})) 
+     :day_summary (json/generate-string activity)}))
+
+(defn fetch-daily-sleep
+  "Fetches daily sleep data from Oura Ring API.
+   Parameters:
+   - token: Oura Ring API token
+   - start-date: Start date in YYYY-MM-DD format
+   - end-date: End date in YYYY-MM-DD format"
+  [token start-date end-date]
+  (-> (str host daily-sleep-endpoint 
+           "?start_date=" start-date 
+           "&end_date=" end-date)
+      (http/get {:headers (build-headers token)})
+      parse-response))
+
+(defn normalize-sleep
+  "Normalizes raw sleep API response into a database-friendly format.
+   Parameters:
+   - raw-data: Raw JSON string from API response
+   Returns:
+   - Map containing normalized sleep data with fields:
+     :date - Date of sleep (YYYY-MM-DD)
+     :id - Unique identifier
+     :score - Sleep score
+     :deep_sleep - Deep sleep contributor score
+     :efficiency - Sleep efficiency contributor score
+     :latency - Sleep latency contributor score
+     :rem_sleep - REM sleep contributor score
+     :restfulness - Restfulness contributor score
+     :timing - Sleep timing contributor score
+     :total_sleep - Total sleep contributor score
+     :timestamp - Timestamp of the record
+     :contributors - Original contributors data as map
+     :raw_json - Complete sleep data as JSON string"
+  [raw-data]
+  (let [sleep (-> raw-data
+                  (json/parse-string true)
+                  :data
+                  first)]
+    {:date (:day sleep)
+     :id (:id sleep)
+     :score (:score sleep)
+     :contributors (:contributors sleep)
+     :timestamp (:timestamp sleep)})) 

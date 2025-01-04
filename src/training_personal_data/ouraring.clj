@@ -40,6 +40,11 @@
     (db/save-activity db-spec normalized)
     normalized))
 
+(defn process-sleep [db-spec data]
+  (let [normalized (api/normalize-sleep data)]
+    (db/save-sleep db-spec normalized)
+    normalized))
+
 (defn validate-env
   "Validates required environment variables are set.
    Throws:
@@ -88,21 +93,22 @@
       (let [token (System/getenv "OURA_TOKEN")
             db-spec (db/make-db-spec (get-db-config))]
         
-        ;; Ensure database table exists
+        ;; Ensure database tables exist
         (db/ensure-table db-spec)
-        
-        ;; Fetch and process data
+        (db/ensure-sleep-table db-spec)
+
+        ;; Fetch and process activity data
         (let [{:keys [success? data error]} (api/fetch-daily-activity token start-date end-date)]
           (if success?
-            (let [save-file-future (future (save-to-json data start-date))
-                  save-db-future (future (process-activity db-spec data))]
-              ;; Aguarda a conclusão dos futures
-              (println "Saving to file...")
-              @save-file-future
-              (println "Saving to database...")
-              @save-db-future
-              (println "All operations completed!"))
-            (throw (ex-info "Failed to fetch data" error))))))
+            (process-activity db-spec data)
+            (throw (ex-info "Failed to fetch activity data" error))))
+        
+        ;; Fetch and process sleep data
+        (let [{:keys [success? data error]} (api/fetch-daily-sleep token start-date end-date)]
+          (println "sleep data:" data)
+          (if success?
+            (process-sleep db-spec data)
+            (throw (ex-info "Failed to fetch sleep data" error))))))
     (catch Exception e
       (println "Error:" (ex-message e))
       (when-let [data (ex-data e)]
