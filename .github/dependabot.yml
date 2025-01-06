@@ -1,13 +1,13 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
+  - package-ecosystem: "maven"
     directory: "/"
     schedule:
       interval: "weekly"
     assignees:
       - "avelino"
     labels:
-      - "npm"
+      - "clojure"
       - "dependencies"
       
   - package-ecosystem: "github-actions"
