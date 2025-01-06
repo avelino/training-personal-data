@@ -26,6 +26,7 @@ jobs:
           SUPABASE_PASSWORD: '${{ secrets.SUPABASE_PASSWORD }}'
           SUPABASE_PORT: '${{ secrets.SUPABASE_PORT }}'
           SUPABASE_USER: '${{ secrets.SUPABASE_USER }}'
+          SUPABASE_DB_NAME: '${{ secrets.SUPABASE_DB_NAME }}'
         run: |
           START_DATE=$(date -d "yesterday" '+%Y-%m-%d')
           END_DATE=$(date '+%Y-%m-%d')
