@@ -1,5 +1,6 @@
 (ns training-personal-data.ouraring.endpoints.activity.db
-  (:require [training-personal-data.ouraring.db :as db]))
+  (:require [training-personal-data.ouraring.db :as db]
+            [pod.babashka.postgresql :as pg]))
 
 (def table-name "ouraring_daily_activity")
 
@@ -13,11 +14,11 @@
    "target_meters" "total_calories" "day_summary"])
 
 (def schema
-  {:date [:date :primary-key]
+  {:date [:date]
    :class_5_min :text
    :score :integer
    :active_calories :integer
-   :average_met :double
+   :average_met ["double precision"]
    :daily_movement :integer
    :equivalent_walking_distance :integer
    :high_activity_met_minutes :integer
@@ -39,6 +40,16 @@
    :total_calories :integer
    :day_summary :text
    :timestamp [:timestamp :default "CURRENT_TIMESTAMP"]})
+
+(defn record-exists? [db-spec date score active-calories]
+  (-> (pg/execute! db-spec
+                   [(str "SELECT EXISTS(SELECT 1 FROM " table-name 
+                         " WHERE date = ?::date"
+                         " AND score = ?"
+                         " AND active_calories = ?) AS exists") 
+                    date score active-calories])
+      first
+      :exists))
 
 (defn extract-values [activity]
   [(:class_5_min activity)

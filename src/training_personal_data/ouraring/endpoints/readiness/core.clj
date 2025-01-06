@@ -5,16 +5,23 @@
             [taoensso.timbre :as log]))
 
 (defn fetch-and-save [token start-date end-date db-spec]
-  (log/info {:event :readiness-process :msg "Processing daily readiness data"})
+  (log/info {:event :readiness-process :msg "Processing readiness data"})
   ;; Ensure table exists
   (common-db/create-table db-spec db/table-name db/schema)
   
   (let [{:keys [success? data error]} (api/fetch token start-date end-date)]
     (if success?
       (do
-        (log/info {:event :readiness-save :msg "Saving readiness records" :count (count data)})
+        (log/info {:event :readiness-save :msg "Processing readiness records" :count (count data)})
         (doseq [readiness data]
           (let [normalized (api/normalize readiness)]
-            (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized))))
-        (log/info {:event :readiness-complete :msg "Successfully saved all readiness records"}))
+            (when-not (db/record-exists? db-spec 
+                                       (:date normalized)
+                                       (:score normalized))
+              (log/info {:event :readiness-insert 
+                        :msg "Inserting new readiness record" 
+                        :date (:date normalized)
+                        :score (:score normalized)})
+              (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized)))))
+        (log/info {:event :readiness-complete :msg "Successfully processed all readiness records"}))
       (throw (ex-info "Failed to fetch readiness data" error))))) 
