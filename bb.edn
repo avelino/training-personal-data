@@ -1,4 +1,5 @@
 {:paths ["src"]
  :deps {org.babashka/http-client {:mvn/version "0.4.15"}
         cheshire/cheshire {:mvn/version "5.12.0"}
+        com.taoensso/timbre {:mvn/version "6.3.1"}
         babashka/babashka.pods {:mvn/version "0.2.0"}}}

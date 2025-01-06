@@ -1,6 +1,7 @@
 (ns training-personal-data.ouraring.db
   (:require [babashka.pods :as pods]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [taoensso.timbre :as log]))
 
 ;; Load PostgreSQL pod
 (pods/load-pod 'org.babashka/postgresql "0.1.0")
@@ -25,23 +26,16 @@
               :user (:user config)
               :password (:password config)
               :sslmode (get config :sslmode "require")}]
-    (println "Connecting to database with config:" 
-             (-> spec
-                 (dissoc :password)
-                 (assoc :password "[REDACTED]")))
+    (log/info {:event :db-connect :msg "Connecting to PostgreSQL database" :host (:host spec)})
     spec))
 
 (defn test-connection [db-spec]
   (try
     (pg/execute! db-spec ["SELECT 1"])
-    (println "Database connection successful!")
+    (log/info {:event :db-connect-success :msg "Successfully connected to PostgreSQL database"})
     true
     (catch Exception e
-      (println "Failed to connect to database:" (ex-message e))
-      (println "Database config:" 
-               (-> db-spec
-                   (dissoc :password)
-                   (assoc :password "[REDACTED]")))
+      (log/error {:event :db-connect-error :msg "Failed to connect to PostgreSQL database" :error (ex-message e)})
       false)))
 
 (defn create-table [db-spec table schema]
@@ -59,6 +53,7 @@
                             (str col-name " " type-str))))
                     (str/join ",\n"))
         sql (str "CREATE TABLE IF NOT EXISTS " table " (\n" columns "\n)")]
+    (log/info {:event :db-create-table :msg "Ensuring table exists" :table table})
     (pg/execute! db-spec [sql])))
 
 (defn record-exists? [db-spec table date]
@@ -89,15 +84,11 @@
     (str "INSERT INTO " table " (" all-columns ") VALUES (" placeholders ")")))
 
 (defn save [db-spec table columns record values]
-  (println "Attempting to save record for date:" (:date record))
   (let [date (:date record)]
-    (println "Record exists check for date:" date)
     (if (record-exists? db-spec table date)
       (do
-        (println "Updating existing record for date:" date)
+        (log/info {:event :db-update :msg "Updating record" :table table :date date})
         (pg/execute! db-spec (into [(build-update-sql table columns)] (conj values date))))
       (do
-        (println "Inserting new record for date:" date)
-        (println "SQL:" (build-insert-sql table columns))
-        (println "Values:" (cons date values))
+        (log/info {:event :db-insert :msg "Inserting new record" :table table :date date})
         (pg/execute! db-spec (into [(build-insert-sql table columns)] (cons date values))))))) 

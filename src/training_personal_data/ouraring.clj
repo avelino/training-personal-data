@@ -1,7 +1,8 @@
 (ns training-personal-data.ouraring
   (:require [training-personal-data.ouraring.endpoints.activity.core :as activity]
             [training-personal-data.ouraring.endpoints.sleep.core :as sleep]
-            [training-personal-data.ouraring.db :as db]))
+            [training-personal-data.ouraring.db :as db]
+            [taoensso.timbre :as log]))
 
 (defn get-db-config []
   (let [config {:dbname (System/getenv "SUPABASE_DB_NAME")
@@ -32,10 +33,12 @@
 
 (defn -main [& args]
   (try
+    (log/info {:event :start :msg "Starting Oura Ring data sync"})
     (validate-env)
     (let [start-date (first args)
           end-date (second args)]
       (validate-dates start-date end-date)
+      (log/info {:event :processing :msg "Processing data" :start start-date :end end-date})
       
       (let [token (System/getenv "OURA_TOKEN")
             db-spec (db/make-db-spec (get-db-config))]
@@ -44,9 +47,8 @@
         (activity/fetch-and-save token start-date end-date db-spec)
         
         ;; Fetch and save sleep data
-        (sleep/fetch-and-save token start-date end-date db-spec)))
+        (sleep/fetch-and-save token start-date end-date db-spec))
+      (log/info {:event :complete :msg "Successfully completed Oura Ring data sync"}))
     (catch Exception e
-      (println "Error:" (ex-message e))
-      (when-let [data (ex-data e)]
-        (println "Details:" data))
+      (log/error {:event :error :msg (ex-message e) :data (ex-data e)})
       (System/exit 1))))

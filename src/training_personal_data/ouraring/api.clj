@@ -1,7 +1,8 @@
 (ns training-personal-data.ouraring.api
   "API client functions for Oura Ring"
   (:require [babashka.http-client :as http]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [taoensso.timbre :as log]))
 
 (def ^:private host "https://api.ouraring.com/v2/usercollection")
 
@@ -25,6 +26,14 @@
                :body body}})))
 
 (defn fetch-data [token endpoint start-date end-date]
-  (-> (build-url endpoint start-date end-date)
-      (http/get {:headers (build-headers token)})
-      parse-response)) 
+  (log/info {:event :api-fetch :msg "Fetching data" :endpoint endpoint :start start-date :end end-date})
+  (let [response (-> (build-url endpoint start-date end-date)
+                    (http/get {:headers (build-headers token)})
+                    parse-response)]
+    (if (:success? response)
+      (do
+        (log/info {:event :api-success :msg "Successfully fetched records" :count (count (:data response))})
+        response)
+      (do
+        (log/error {:event :api-error :msg "Failed to fetch data" :status (get-in response [:error :status])})
+        response)))) 
