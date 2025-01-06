@@ -39,20 +39,22 @@
       false)))
 
 (defn create-table [db-spec table schema]
-  (let [columns (->> schema
+  (let [pk-columns (get schema :pk)
+        schema-without-pk (dissoc schema :pk)
+        columns (->> schema-without-pk
                     (map (fn [[col type]]
-                          (if (= col :primary_key)
-                            (first type)  ; For composite primary keys
-                            (let [type-str (if (vector? type)
-                                           (case (second type)
-                                             :primary-key (str (name (first type)) " PRIMARY KEY")
-                                             :default (str (name (first type)) 
-                                                         " DEFAULT " 
-                                                         (last type))
-                                             (str/join " " (map name type)))
-                                           (name type))
-                                  col-name (normalize-column-name col)]
-                              (str col-name " " type-str)))))
+                          (let [type-str (if (vector? type)
+                                         (case (second type)
+                                           :primary-key (str (name (first type)) " PRIMARY KEY")
+                                           :default (str (name (first type)) 
+                                                       " DEFAULT " 
+                                                       (last type))
+                                           (str/join " " (map name type)))
+                                         (name type))
+                                col-name (normalize-column-name col)]
+                            (str col-name " " type-str))))
+                    (concat (when pk-columns
+                             [(str "PRIMARY KEY (" (str/join ", " (map normalize-column-name pk-columns)) ")")]))
                     (str/join ",\n"))
         sql (str "CREATE TABLE IF NOT EXISTS " table " (\n" columns "\n)")]
     (log/info {:event :db-create-table :msg "Ensuring table exists" :table table})
@@ -69,9 +71,11 @@
 (defn build-update-sql [table columns]
   (let [set-pairs (map-indexed (fn [idx col]
                                 (let [col-name (normalize-column-name col)]
-                                  (if (= col-name "timestamp")
-                                    (str col-name " = ?::timestamp")
-                                    (str col-name " = ?"))))
+                                  (cond
+                                    (= col-name "timestamp") (str col-name " = ?::timestamp")
+                                    (= col-name "start_datetime") (str col-name " = ?::timestamp")
+                                    (= col-name "end_datetime") (str col-name " = ?::timestamp")
+                                    :else (str col-name " = ?"))))
                               columns)
         set-clause (str/join ", " set-pairs)]
     (str "UPDATE " table
@@ -83,7 +87,11 @@
         all-columns (str/join ", " (cons "date" normalized-columns))
         placeholders (str/join ", " 
                              (cons "?::date" 
-                                  (map #(if (= % "timestamp") "?::timestamp" "?") 
+                                  (map #(cond
+                                        (= % "timestamp") "?::timestamp"
+                                        (= % "start_datetime") "?::timestamp"
+                                        (= % "end_datetime") "?::timestamp"
+                                        :else "?")
                                        normalized-columns)))]
     (str "INSERT INTO " table " (" all-columns ") VALUES (" placeholders ")")))
 
