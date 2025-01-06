@@ -6,6 +6,11 @@
 (pods/load-pod 'org.babashka/postgresql "0.1.0")
 (require '[pod.babashka.postgresql :as pg])
 
+(defn normalize-column-name [col-name]
+  (-> col-name
+      name
+      (str/replace "-" "_")))
+
 (defn make-db-spec [config]
   (let [required-keys [:dbname :host :user :password]
         missing-keys (remove #(get config %) required-keys)]
@@ -43,12 +48,18 @@
   (let [columns (->> schema
                     (map (fn [[col type]]
                           (let [type-str (if (vector? type)
-                                         (str/join " " (map name type))
-                                         (name type))]
-                            (str (name col) " " type-str))))
-                    (str/join ",\n"))]
-    (pg/execute! db-spec
-                [(str "CREATE TABLE IF NOT EXISTS " table " (\n" columns "\n)")])))
+                                         (case (second type)
+                                           :primary-key (str (name (first type)) " PRIMARY KEY")
+                                           :default (str (name (first type)) 
+                                                       " DEFAULT " 
+                                                       (last type))
+                                           (str/join " " (map name type)))
+                                         (name type))
+                                col-name (normalize-column-name col)]
+                            (str col-name " " type-str))))
+                    (str/join ",\n"))
+        sql (str "CREATE TABLE IF NOT EXISTS " table " (\n" columns "\n)")]
+    (pg/execute! db-spec [sql])))
 
 (defn record-exists? [db-spec table date]
   (-> (pg/execute! db-spec
@@ -58,9 +69,10 @@
 
 (defn build-update-sql [table columns]
   (let [set-pairs (map-indexed (fn [idx col]
-                                (if (= col "timestamp")
-                                  (str col " = ?::timestamp")
-                                  (str col " = ?")))
+                                (let [col-name (normalize-column-name col)]
+                                  (if (= col-name "timestamp")
+                                    (str col-name " = ?::timestamp")
+                                    (str col-name " = ?"))))
                               columns)
         set-clause (str/join ", " set-pairs)]
     (str "UPDATE " table
@@ -68,11 +80,12 @@
          " WHERE date = ?::date")))
 
 (defn build-insert-sql [table columns]
-  (let [all-columns (str/join ", " (cons "date" columns))
+  (let [normalized-columns (map normalize-column-name columns)
+        all-columns (str/join ", " (cons "date" normalized-columns))
         placeholders (str/join ", " 
                              (cons "?::date" 
                                   (map #(if (= % "timestamp") "?::timestamp" "?") 
-                                       columns)))]
+                                       normalized-columns)))]
     (str "INSERT INTO " table " (" all-columns ") VALUES (" placeholders ")")))
 
 (defn save [db-spec table columns record values]

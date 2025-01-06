@@ -4,6 +4,9 @@
             [training-personal-data.ouraring.db :as common-db]))
 
 (defn fetch-and-save [token start-date end-date db-spec]
+  ;; Ensure table exists
+  (common-db/create-table db-spec db/table-name db/schema)
+  
   (let [{:keys [success? data error]} (api/fetch token start-date end-date)]
     (if success?
       (doseq [sleep data]
