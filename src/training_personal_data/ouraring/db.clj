@@ -98,10 +98,13 @@
 (defn save [db-spec table columns record values]
   (let [date (:date record)
         timestamp (:timestamp record)]
-    (if (record-exists? db-spec table date timestamp)
-      (do
-        (log/info {:event :db-update :msg "Updating record" :table table :date date :timestamp timestamp})
-        (pg/execute! db-spec (into [(build-update-sql table columns)] (conj values date timestamp))))
-      (do
-        (log/info {:event :db-insert :msg "Inserting new record" :table table :date date :timestamp timestamp})
-        (pg/execute! db-spec (into [(build-insert-sql table columns)] (cons date values))))))) 
+    (future
+      (if (record-exists? db-spec table date timestamp)
+        (do
+          (log/info {:event :db-update :msg "Updating record" :table table :date date :timestamp timestamp})
+          (pg/execute! db-spec (into [(build-update-sql table columns)] (conj values date timestamp))))
+        (do
+          (log/info {:event :db-insert :msg "Inserting new record" :table table :date date :timestamp timestamp})
+          (pg/execute! db-spec (into [(build-insert-sql table columns)] (cons date values)))))
+      ;; Retornar o registro para facilitar encadeamento de operações
+      record))) 
