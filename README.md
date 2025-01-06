@@ -1,14 +1,27 @@
-# training personal data
+# Training Personal Data
 
-## oura ring
+A data collection and analysis tool for personal health and fitness tracking, currently supporting Oura Ring integration.
 
-**envs:**
+## Features
 
-* `OURA_TOKEN`
+- Automated data collection from Oura Ring API
+- Data storage in Supabase database
+- Scheduled data syncing via GitHub Actions
 
-**run:**
+## Requirements
 
-``` sh
-OURA_TOKEN=... \
-    bb -cp src -m training-personal-data.ouraring 2024-12-01 2024-12-01
-```
+- [Babashka](https://babashka.org/) - A Clojure scripting runtime
+- Oura Ring API token
+- Supabase database instance
+
+## Environment Variables
+
+### Required
+- `OURA_TOKEN` - Your Oura Ring API access token
+
+### Optional (for Supabase storage)
+- `SUPABASE_HOST` - Supabase database host
+- `SUPABASE_USER` - Database username
+- `SUPABASE_PASSWORD` - Database password
+- `SUPABASE_PORT` - Database port
+- `SUPABASE_DB_NAME` - Database name
