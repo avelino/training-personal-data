@@ -1,20 +1,17 @@
-name: tests
+name: Tests
+
 on:
   push:
   pull_request:
 
 jobs:
-  job:
-    runs-on: ubuntu-latest
-    environment: main
+  test:
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Babashka
+      - uses: actions/checkout@v4
+      - name: Install babashka
         uses: turtlequeue/setup-babashka@v1.7.0
         with:
           babashka-version: 1.12.196
-      - name: babashka deps
-        run: bb prepare
-      - name: get ouraring data
+      - name: Run tests
         run: bb test
