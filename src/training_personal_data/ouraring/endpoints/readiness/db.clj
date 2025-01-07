@@ -14,7 +14,7 @@
    :score :integer
    :temperature_trend ["double precision"]
    :temperature_deviation ["double precision"]
-   :contributors_json :text
+   :contributors_json :jsonb
    :raw_json :jsonb
    :timestamp [:timestamp :default "CURRENT_TIMESTAMP"]})
 

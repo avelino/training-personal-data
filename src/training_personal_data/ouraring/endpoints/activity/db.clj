@@ -29,7 +29,7 @@
    :low_activity_time :integer
    :medium_activity_met_minutes :integer
    :medium_activity_time :integer
-   :met :text
+   :met :jsonb
    :meters_to_target :integer
    :non_wear_time :integer
    :resting_time :integer
@@ -39,7 +39,7 @@
    :target_calories :integer
    :target_meters :integer
    :total_calories :integer
-   :day_summary :text
+   :day_summary :jsonb
    :raw_json :jsonb
    :timestamp [:timestamp :default "CURRENT_TIMESTAMP"]})
 

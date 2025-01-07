@@ -21,7 +21,7 @@
    :timing :integer
    :total_sleep :integer
    :timestamp :timestamp
-   :contributors_json :text
+   :contributors_json :jsonb
    :raw_json :jsonb
    :created_at [:timestamp :default "CURRENT_TIMESTAMP"]})
 

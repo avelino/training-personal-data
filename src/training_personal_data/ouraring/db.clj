@@ -48,7 +48,9 @@
                                                        " DEFAULT " 
                                                        (last type))
                                            (str/join " " (map name type)))
-                                         (name type))
+                                         (case type
+                                           :jsonb "jsonb"
+                                           (name type)))
                                 col-name (normalize-column-name col)]
                             (str col-name " " type-str))))
                     (str/join ",\n"))
@@ -73,7 +75,10 @@
                             (str/ends-with? col-name "_datetime") (str col-name " = ?::timestamp")
                             (= col-name "timestamp") (str col-name " = ?::timestamp")
                             (= col-name "tags") (str col-name " = ?::text[]")
-                            (= col-name "raw_json") (str col-name " = ?::jsonb")
+                            (or (= col-name "raw_json")
+                                (= col-name "met")
+                                (= col-name "day_summary")
+                                (str/ends-with? col-name "_json")) (str col-name " = ?::jsonb")
                             :else (str col-name " = ?"))))
                       update-columns)
         set-clause (str/join ", " set-pairs)]
@@ -86,7 +91,10 @@
                            (str/ends-with? % "_datetime") "?::timestamp"
                            (= % "timestamp") "?::timestamp"
                            (= % "tags") "?::text[]"
-                           (= % "raw_json") "?::jsonb"
+                           (or (= % "raw_json")
+                               (= % "met")
+                               (= % "day_summary")
+                               (str/ends-with? % "_json")) "?::jsonb"
                            :else "?")
                         normalized-columns)]
     (str "INSERT INTO " table " ("
