@@ -1,4 +1,4 @@
-name: cron
+name: tests
 on:
   push:
   pull_request:
