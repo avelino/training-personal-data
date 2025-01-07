@@ -11,7 +11,7 @@
   {:id (:id readiness)
    :date (str (:day readiness))
    :score (:score readiness)
-   :temperature_trend (:temperature_trend readiness)
+   :temperature_trend (:temperature_trend_deviation readiness)
    :temperature_deviation (:temperature_deviation readiness)
    :contributors_json (json/generate-string (:contributors readiness))
    :raw_json (json/generate-string readiness)}) 
