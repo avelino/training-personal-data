@@ -8,7 +8,8 @@
   (api/fetch-data token endpoint start-date end-date))
 
 (defn normalize [tag]
-  {:date (:day tag)
+  {:id (:id tag)
+   :date (str (:day tag))
    :text (:text tag)
    :tags (:tags tag)
    :timestamp (:timestamp tag)

@@ -8,7 +8,8 @@
   (api/fetch-data token endpoint start-date end-date))
 
 (defn normalize [readiness]
-  {:date (:day readiness)
+  {:id (:id readiness)
+   :date (str (:day readiness))
    :score (:score readiness)
    :temperature_trend (:temperature_trend readiness)
    :temperature_deviation (:temperature_deviation readiness)

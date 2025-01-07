@@ -8,7 +8,8 @@
   (api/fetch-data token endpoint start-date end-date))
 
 (defn normalize [activity]
-  {:date (:day activity)
+  {:id (:id activity)
+   :date (str (:day activity))
    :class_5_min (json/generate-string (:class_5_min activity))
    :score (:score activity)
    :active_calories (:active_calories activity)
@@ -32,4 +33,5 @@
    :target_calories (:target_calories activity)
    :target_meters (:target_meters activity)
    :total_calories (:total_calories activity)
-   :day_summary (json/generate-string activity)}) 
+   :day_summary (json/generate-string activity)
+   :raw_json (json/generate-string activity)}) 

@@ -6,33 +6,25 @@
 (def table-name "ouraring_tags")
 
 (def columns
-  ["text" "tags" "timestamp" "raw_json"])
+  ["id" "date" "text" "tags" "timestamp" "raw_json"])
 
 (def schema
-  {:date [:date]
+  {:id [:text :primary-key]
+   :date [:date]
    :text :text
    :tags ["text[]"]
    :timestamp [:timestamp]
-   :raw_json :text
-   :created_at [:timestamp :default "CURRENT_TIMESTAMP"]
-   :pk ["date" "timestamp" "text"]})
-
-(defn record-exists? [db-spec date timestamp text]
-  (-> (pg/execute! db-spec
-                   [(str "SELECT EXISTS(SELECT 1 FROM " table-name 
-                         " WHERE date = ?::date"
-                         " AND timestamp = ?::timestamp"
-                         " AND text = ?) AS exists") 
-                    date timestamp text])
-      first
-      :exists))
+   :raw_json :jsonb
+   :created_at [:timestamp :default "CURRENT_TIMESTAMP"]})
 
 (defn clj-vector->pg-array [v]
   (when v
     (str "{" (str/join "," (map #(str "\"" % "\"") v)) "}")))
 
 (defn extract-values [tag]
-  [(:text tag)
+  [(:id tag)
+   (:date tag)
+   (:text tag)
    (clj-vector->pg-array (:tags tag))
    (:timestamp tag)
    (:raw_json tag)]) 

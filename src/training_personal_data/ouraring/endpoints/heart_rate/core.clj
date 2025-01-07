@@ -15,15 +15,9 @@
         (log/info {:event :heart-rate-save :msg "Processing heart rate records" :count (count data)})
         (doseq [heart-rate data]
           (let [normalized (api/normalize heart-rate)]
-            (when-not (db/record-exists? db-spec 
-                                       (:date normalized) 
-                                       (:bpm normalized) 
-                                       (:source normalized))
-              (log/info {:event :heart-rate-insert 
-                        :msg "Inserting new heart rate record" 
-                        :date (:date normalized)
-                        :bpm (:bpm normalized)
-                        :source (:source normalized)})
-              (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized)))))
+            (log/info {:event :heart-rate-save-record 
+                      :msg "Saving heart rate record" 
+                      :id (:id normalized)})
+            (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized))))
         (log/info {:event :heart-rate-complete :msg "Successfully processed all heart rate records"}))
       (throw (ex-info "Failed to fetch heart rate data" error))))) 

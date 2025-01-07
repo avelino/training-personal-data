@@ -5,26 +5,21 @@
 (def table-name "ouraring_heart_rate")
 
 (def columns
-  ["timestamp" "bpm" "source" "raw_json"])
+  ["id" "date" "timestamp" "bpm" "source" "raw_json"])
 
 (def schema
-  {:date [:date]
+  {:id [:text :primary-key]
+   :date [:date]
    :timestamp [:timestamp]
    :bpm :integer
    :source :text
-   :raw_json :text
+   :raw_json :jsonb
    :created_at [:timestamp :default "CURRENT_TIMESTAMP"]})
 
-(defn record-exists? [db-spec date bpm source]
-  (-> (pg/execute! db-spec
-                   [(str "SELECT EXISTS(SELECT 1 FROM " table-name 
-                         " WHERE date = ?::date AND bpm = ? AND source = ?) AS exists") 
-                    date bpm source])
-      first
-      :exists))
-
 (defn extract-values [heart-rate]
-  [(:timestamp heart-rate)
+  [(:id heart-rate)
+   (:date heart-rate)
+   (:timestamp heart-rate)
    (:bpm heart-rate)
    (:source heart-rate)
    (:raw_json heart-rate)]) 

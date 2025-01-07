@@ -1,16 +1,17 @@
 (ns training-personal-data.ouraring.endpoints.sleep.db
-  (:require [training-personal-data.ouraring.db :as db]))
+  (:require [training-personal-data.ouraring.db :as db]
+            [pod.babashka.postgresql :as pg]))
 
 (def table-name "ouraring_daily_sleep")
 
 (def columns
-  ["id" "score" "deep_sleep" "efficiency" "latency" "rem_sleep"
+  ["id" "date" "score" "deep_sleep" "efficiency" "latency" "rem_sleep"
    "restfulness" "timing" "total_sleep" "timestamp"
    "contributors_json" "raw_json"])
 
 (def schema
-  {:date [:date :primary-key]
-   :id :text
+  {:id [:text :primary-key]
+   :date [:date]
    :score :integer
    :deep_sleep :integer
    :efficiency :integer
@@ -21,10 +22,12 @@
    :total_sleep :integer
    :timestamp :timestamp
    :contributors_json :text
-   :raw_json :text})
+   :raw_json :jsonb
+   :created_at [:timestamp :default "CURRENT_TIMESTAMP"]})
 
 (defn extract-values [sleep]
   [(:id sleep)
+   (:date sleep)
    (:score sleep)
    (:deep_sleep sleep)
    (:efficiency sleep)

@@ -5,11 +5,12 @@
 (def table-name "ouraring_workout")
 
 (def columns
-  ["activity" "calories" "day_id" "distance" "end_datetime"
+  ["id" "date" "activity" "calories" "day_id" "distance" "end_datetime"
    "intensity" "label" "source" "start_datetime" "raw_json"])
 
 (def schema
-  {:date [:date]
+  {:id [:text :primary-key]
+   :date [:date]
    :activity :text
    :calories :integer
    :day_id :text
@@ -19,22 +20,13 @@
    :label :text
    :source :text
    :start_datetime [:timestamp]
-   :raw_json :text
-   :timestamp [:timestamp :default "CURRENT_TIMESTAMP"]
-   :pk ["date" "start_datetime" "activity"]})
-
-(defn record-exists? [db-spec date start-datetime activity]
-  (-> (pg/execute! db-spec
-                   [(str "SELECT EXISTS(SELECT 1 FROM " table-name 
-                         " WHERE date = ?::date"
-                         " AND start_datetime = ?::timestamp"
-                         " AND activity = ?) AS exists") 
-                    date start-datetime activity])
-      first
-      :exists))
+   :raw_json :jsonb
+   :timestamp [:timestamp :default "CURRENT_TIMESTAMP"]})
 
 (defn extract-values [workout]
-  [(:activity workout)
+  [(:id workout)
+   (:date workout)
+   (:activity workout)
    (:calories workout)
    (:day_id workout)
    (:distance workout)

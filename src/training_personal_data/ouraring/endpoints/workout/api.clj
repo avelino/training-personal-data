@@ -8,7 +8,8 @@
   (api/fetch-data token endpoint start-date end-date))
 
 (defn normalize [workout]
-  {:date (:day workout)
+  {:id (:id workout)
+   :date (str (:day workout))
    :activity (:activity workout)
    :calories (:calories workout)
    :day_id (:day_id workout)

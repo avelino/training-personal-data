@@ -13,21 +13,11 @@
     (if success?
       (do
         (log/info {:event :tags-save :msg "Processing tags records" :count (count data)})
-        (let [futures (doall
-                       (for [tag data]
-                         (let [normalized (api/normalize tag)]
-                           (when-not (db/record-exists? db-spec 
-                                                      (:date normalized)
-                                                      (:timestamp normalized)
-                                                      (:text normalized))
-                             (log/info {:event :tags-insert 
-                                      :msg "Inserting new tag record" 
-                                      :date (:date normalized)
-                                      :text (:text normalized)
-                                      :timestamp (:timestamp normalized)})
-                             (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized))))))]
-          ;; Esperar todos os inserts terminarem antes de retornar
-          (doseq [f (remove nil? futures)]
-            @f))
-        (log/info {:event :tags-complete :msg "Successfully processed all tag records"}))
+        (doseq [tag data]
+          (let [normalized (api/normalize tag)]
+            (log/info {:event :tags-save-record 
+                      :msg "Saving tag record" 
+                      :id (:id normalized)})
+            (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized))))
+        (log/info {:event :tags-complete :msg "Successfully processed all tags records"}))
       (throw (ex-info "Failed to fetch tags data" error))))) 

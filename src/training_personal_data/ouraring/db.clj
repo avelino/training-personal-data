@@ -39,9 +39,7 @@
       false)))
 
 (defn create-table [db-spec table schema]
-  (let [pk-columns (get schema :pk)
-        schema-without-pk (dissoc schema :pk)
-        columns (->> schema-without-pk
+  (let [columns (->> schema
                     (map (fn [[col type]]
                           (let [type-str (if (vector? type)
                                          (case (second type)
@@ -53,60 +51,66 @@
                                          (name type))
                                 col-name (normalize-column-name col)]
                             (str col-name " " type-str))))
-                    (concat (when pk-columns
-                             [(str "PRIMARY KEY (" (str/join ", " (map normalize-column-name pk-columns)) ")")]))
                     (str/join ",\n"))
         sql (str "CREATE TABLE IF NOT EXISTS " table " (\n" columns "\n)")]
     (log/info {:event :db-create-table :msg "Ensuring table exists" :table table})
     (pg/execute! db-spec [sql])))
 
-(defn record-exists? [db-spec table date timestamp]
+(defn record-exists? [db-spec table id]
   (-> (pg/execute! db-spec
                    [(str "SELECT EXISTS(SELECT 1 FROM " table 
-                         " WHERE date = ?::date AND timestamp = ?::timestamp) AS exists") 
-                    date timestamp])
+                         " WHERE id = ?) AS exists") 
+                    id])
       first
       :exists))
 
 (defn build-update-sql [table columns]
-  (let [set-pairs (map-indexed (fn [idx col]
-                                (let [col-name (normalize-column-name col)]
-                                  (cond
-                                    (= col-name "timestamp") (str col-name " = ?::timestamp")
-                                    (= col-name "start_datetime") (str col-name " = ?::timestamp")
-                                    (= col-name "end_datetime") (str col-name " = ?::timestamp")
-                                    (= col-name "tags") (str col-name " = ?::text[]")
-                                    :else (str col-name " = ?"))))
-                              columns)
+  (let [update-columns (remove #(= % "id") columns)
+        set-pairs (map (fn [col]
+                        (let [col-name (normalize-column-name col)]
+                          (cond
+                            (= col-name "date") (str col-name " = ?::date")
+                            (str/ends-with? col-name "_datetime") (str col-name " = ?::timestamp")
+                            (= col-name "timestamp") (str col-name " = ?::timestamp")
+                            (= col-name "tags") (str col-name " = ?::text[]")
+                            (= col-name "raw_json") (str col-name " = ?::jsonb")
+                            :else (str col-name " = ?"))))
+                      update-columns)
         set-clause (str/join ", " set-pairs)]
-    (str "UPDATE " table
-         " SET " set-clause
-         " WHERE date = ?::date AND timestamp = ?::timestamp")))
+    (str "UPDATE " table " SET " set-clause " WHERE id = ?")))
 
 (defn build-insert-sql [table columns]
   (let [normalized-columns (map normalize-column-name columns)
-        all-columns (str/join ", " (cons "date" normalized-columns))
-        placeholders (str/join ", " 
-                             (cons "?::date" 
-                                  (map #(cond
-                                        (= % "timestamp") "?::timestamp"
-                                        (= % "start_datetime") "?::timestamp"
-                                        (= % "end_datetime") "?::timestamp"
-                                        (= % "tags") "?::text[]"
-                                        :else "?")
-                                       normalized-columns)))]
-    (str "INSERT INTO " table " (" all-columns ") VALUES (" placeholders ")")))
+        placeholders (map #(cond
+                           (= % "date") "?::date"
+                           (str/ends-with? % "_datetime") "?::timestamp"
+                           (= % "timestamp") "?::timestamp"
+                           (= % "tags") "?::text[]"
+                           (= % "raw_json") "?::jsonb"
+                           :else "?")
+                        normalized-columns)]
+    (str "INSERT INTO " table " ("
+         (str/join ", " normalized-columns)
+         ") VALUES ("
+         (str/join ", " placeholders)
+         ")")))
 
 (defn save [db-spec table columns record values]
-  (let [date (:date record)
-        timestamp (:timestamp record)]
-    (future
-      (if (record-exists? db-spec table date timestamp)
+  (let [id (:id record)]
+    (when-not id
+      (throw (ex-info "Record must have an id" {:record record})))
+    (try
+      (if (record-exists? db-spec table id)
         (do
-          (log/info {:event :db-update :msg "Updating record" :table table :date date :timestamp timestamp})
-          (pg/execute! db-spec (into [(build-update-sql table columns)] (conj values date timestamp))))
+          (log/debug {:event :db-save :action :update :table table :id id})
+          (let [sql (build-update-sql table columns)
+                update-values (vec (concat (rest values) [id]))]
+            (pg/execute! db-spec (into [sql] update-values))))
         (do
-          (log/info {:event :db-insert :msg "Inserting new record" :table table :date date :timestamp timestamp})
-          (pg/execute! db-spec (into [(build-insert-sql table columns)] (cons date values)))))
-      ;; Retornar o registro para facilitar encadeamento de operações
-      record))) 
+          (log/debug {:event :db-save :action :insert :table table :id id})
+          (let [sql (build-insert-sql table columns)]
+            (pg/execute! db-spec (into [sql] values)))))
+      (catch Exception e
+        (log/error {:event :db-save :action :error :table table :id id :error (ex-message e)})
+        (throw e)))
+    record)) 

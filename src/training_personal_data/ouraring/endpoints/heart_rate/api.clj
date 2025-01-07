@@ -10,8 +10,10 @@
 
 (defn normalize [heart-rate]
   (let [timestamp (:timestamp heart-rate)
-        date (first (str/split timestamp #"T"))]
-    {:date date
+        date (first (str/split timestamp #"T"))  ; extract date from timestamp
+        id (str timestamp "-" (:bpm heart-rate) "-" (:source heart-rate))]  ; create unique id
+    {:id id
+     :date date
      :timestamp timestamp
      :bpm (:bpm heart-rate)
      :source (:source heart-rate)

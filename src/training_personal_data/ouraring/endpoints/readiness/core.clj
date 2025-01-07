@@ -15,13 +15,9 @@
         (log/info {:event :readiness-save :msg "Processing readiness records" :count (count data)})
         (doseq [readiness data]
           (let [normalized (api/normalize readiness)]
-            (when-not (db/record-exists? db-spec 
-                                       (:date normalized)
-                                       (:score normalized))
-              (log/info {:event :readiness-insert 
-                        :msg "Inserting new readiness record" 
-                        :date (:date normalized)
-                        :score (:score normalized)})
-              (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized)))))
+            (log/info {:event :readiness-save-record 
+                      :msg "Saving readiness record" 
+                      :id (:id normalized)})
+            (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized))))
         (log/info {:event :readiness-complete :msg "Successfully processed all readiness records"}))
       (throw (ex-info "Failed to fetch readiness data" error))))) 

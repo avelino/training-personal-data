@@ -69,11 +69,11 @@
       (let [token (System/getenv "OURA_TOKEN")
             db-spec (db/make-db-spec (get-db-config))
             endpoints {:activity activity/fetch-and-save
-                      :sleep sleep/fetch-and-save
-                      :readiness readiness/fetch-and-save
-                      ;; :heart-rate heart-rate/fetch-and-save
-                      :workout workout/fetch-and-save
-                      :tags tags/fetch-and-save}]
+                       :sleep sleep/fetch-and-save
+                       :readiness readiness/fetch-and-save
+                       ;; :heart-rate heart-rate/fetch-and-save
+                       :workout workout/fetch-and-save
+                       :tags tags/fetch-and-save}]
         (->> endpoints
              (map #(process-endpoint % token start-date end-date db-spec))
              (doall)  ; Start all futures
