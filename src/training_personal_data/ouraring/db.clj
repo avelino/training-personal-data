@@ -75,6 +75,7 @@
                                     (= col-name "timestamp") (str col-name " = ?::timestamp")
                                     (= col-name "start_datetime") (str col-name " = ?::timestamp")
                                     (= col-name "end_datetime") (str col-name " = ?::timestamp")
+                                    (= col-name "tags") (str col-name " = ?::text[]")
                                     :else (str col-name " = ?"))))
                               columns)
         set-clause (str/join ", " set-pairs)]
@@ -91,6 +92,7 @@
                                         (= % "timestamp") "?::timestamp"
                                         (= % "start_datetime") "?::timestamp"
                                         (= % "end_datetime") "?::timestamp"
+                                        (= % "tags") "?::text[]"
                                         :else "?")
                                        normalized-columns)))]
     (str "INSERT INTO " table " (" all-columns ") VALUES (" placeholders ")")))

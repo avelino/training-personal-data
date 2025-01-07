@@ -4,6 +4,7 @@
             [training-personal-data.ouraring.endpoints.readiness.core :as readiness]
             [training-personal-data.ouraring.endpoints.heart-rate.core :as heart-rate]
             [training-personal-data.ouraring.endpoints.workout.core :as workout]
+            [training-personal-data.ouraring.endpoints.tags.core :as tags]
             [training-personal-data.ouraring.db :as db]
             [taoensso.timbre :as log]))
 
@@ -70,8 +71,9 @@
             endpoints {:activity activity/fetch-and-save
                       :sleep sleep/fetch-and-save
                       :readiness readiness/fetch-and-save
-                      :heart-rate heart-rate/fetch-and-save
-                      :workout workout/fetch-and-save}]
+                      ;; :heart-rate heart-rate/fetch-and-save
+                      :workout workout/fetch-and-save
+                      :tags tags/fetch-and-save}]
         (->> endpoints
              (map #(process-endpoint % token start-date end-date db-spec))
              (doall)  ; Start all futures
