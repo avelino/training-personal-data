@@ -1,5 +1,20 @@
-{:paths ["src"]
+{:paths ["src" "test"]
  :deps {org.babashka/http-client {:mvn/version "0.4.15"}
         cheshire/cheshire {:mvn/version "5.12.0"}
-        com.taoensso/timbre {:mvn/version "6.3.1"}
-        babashka/babashka.pods {:mvn/version "0.2.0"}}}
+        com.taoensso/timbre {:mvn/version "6.3.1"}}
+ 
+ :tasks
+ {:requires ([babashka.fs :as fs])
+  :init (do
+          (def version "1.0.0"))
+  
+  run:oura {:doc "Run ouraring all endpoint"
+            :task (do
+                    (println "\nRun ouraring all endpoint")
+                    (let [args *command-line-args*]
+                      (shell (format "bb -cp src -m training-personal-data.ouraring %s %s" (first args) (second args)))))}
+
+  test {:doc "Run all tests"
+        :task (do
+               (println "\nRunning tests...")
+               (shell "bb -cp test:src -m training-personal-data.test-runner"))}}}

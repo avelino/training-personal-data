@@ -1,0 +1,20 @@
+name: cron
+on:
+  push:
+  pull_request:
+
+jobs:
+  job:
+    runs-on: ubuntu-latest
+    environment: main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.7.0
+        with:
+          babashka-version: 1.12.196
+      - name: babashka deps
+        run: bb prepare
+      - name: get ouraring data
+        run: bb test

@@ -30,4 +30,4 @@ jobs:
         run: |
           START_DATE=$(date -d "yesterday" '+%Y-%m-%d')
           END_DATE=$(date '+%Y-%m-%d')
-          bb -cp src -m training-personal-data.ouraring $START_DATE $END_DATE
+          bb run:oura $START_DATE $END_DATE
