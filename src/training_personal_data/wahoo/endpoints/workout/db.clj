@@ -1,7 +1,5 @@
 (ns training-personal-data.wahoo.endpoints.workout.db
-  (:require [training-personal-data.db :as db]
-            [pod.babashka.postgresql :as pg]
-            [cheshire.core :as json]))
+  (:require [cheshire.core :as json]))
 
 (def table-name "wahoo_workout")
 
@@ -10,7 +8,7 @@
    "workout_type_id" "workout_summary" "created_at" "updated_at" "raw_json"])
 
 (def schema
-  {:id :text
+  {:id [:text :primary-key]
    :starts :timestamp
    :minutes :integer
    :name :text
@@ -21,7 +19,7 @@
    :created_at :timestamp
    :updated_at :timestamp
    :raw_json :jsonb
-   :timestamp [:timestamp "DEFAULT CURRENT_TIMESTAMP"]})
+   :timestamp [:timestamp :default "CURRENT_TIMESTAMP"]})
 
 (defn extract-values [workout]
   [(:id workout)

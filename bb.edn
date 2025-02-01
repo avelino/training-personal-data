@@ -34,6 +34,13 @@
                               (shell (format "bb -cp src -m training-personal-data.insights.week %s"
                                              (first args)))))}
 
+  run:wahoo {:doc "Run wahoo endpoint"
+             :task (do
+                     (println "\nRun wahoo endpoint")
+                     (let [args *command-line-args*]
+                       (shell (format "bb -cp src -m training-personal-data.wahoo %s %s"
+                                      (first args) (second args)))))}
+
   test {:doc "Run all tests"
         :task (do
                 (println "\nRunning tests...")
