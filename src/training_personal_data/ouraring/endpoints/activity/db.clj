@@ -1,5 +1,5 @@
 (ns training-personal-data.ouraring.endpoints.activity.db
-  (:require [training-personal-data.ouraring.db :as db]
+  (:require [training-personal-data.db :as db]
             [pod.babashka.postgresql :as pg]))
 
 (def table-name "ouraring_daily_activity")
@@ -70,4 +70,4 @@
    (:target_meters activity)
    (:total_calories activity)
    (str (:day_summary activity))
-   (str (:raw_json activity))]) 
+   (str (:raw_json activity))])

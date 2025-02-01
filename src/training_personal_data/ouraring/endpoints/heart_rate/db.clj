@@ -1,5 +1,5 @@
 (ns training-personal-data.ouraring.endpoints.heart-rate.db
-  (:require [training-personal-data.ouraring.db :as db]
+  (:require [training-personal-data.db :as db]
             [pod.babashka.postgresql :as pg]))
 
 (def table-name "ouraring_heart_rate")
@@ -22,4 +22,4 @@
    (:timestamp heart-rate)
    (:bpm heart-rate)
    (:source heart-rate)
-   (:raw_json heart-rate)]) 
+   (:raw_json heart-rate)])

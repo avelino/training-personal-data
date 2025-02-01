@@ -1,5 +1,5 @@
 (ns training-personal-data.ouraring.endpoints.workout.db
-  (:require [training-personal-data.ouraring.db :as db]
+  (:require [training-personal-data.db :as db]
             [pod.babashka.postgresql :as pg]))
 
 (def table-name "ouraring_workout")
@@ -35,4 +35,4 @@
    (:label workout)
    (:source workout)
    (:start_datetime workout)
-   (:raw_json workout)]) 
+   (:raw_json workout)])

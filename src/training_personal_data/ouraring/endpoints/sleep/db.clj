@@ -1,5 +1,5 @@
 (ns training-personal-data.ouraring.endpoints.sleep.db
-  (:require [training-personal-data.ouraring.db :as db]
+  (:require [training-personal-data.db :as db]
             [pod.babashka.postgresql :as pg]))
 
 (def table-name "ouraring_daily_sleep")

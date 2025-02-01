@@ -1,4 +1,4 @@
-(ns training-personal-data.ouraring.db
+(ns training-personal-data.db
   (:require [babashka.pods :as pods]
             [clojure.string :as str]
             [taoensso.timbre :as log]))
@@ -16,9 +16,9 @@
   (let [required-keys [:dbname :host :user :password]
         missing-keys (remove #(get config %) required-keys)]
     (when (seq missing-keys)
-      (throw (ex-info "Missing required database configuration keys" 
+      (throw (ex-info "Missing required database configuration keys"
                      {:missing missing-keys}))))
-  
+
   (let [spec {:dbtype "postgresql"
               :dbname (:dbname config)
               :host (:host config)
@@ -38,14 +38,25 @@
       (log/error {:event :db-connect-error :msg "Failed to connect to PostgreSQL database" :error (ex-message e)})
       false)))
 
+(defn query
+  "Execute a SQL query with parameters and return results.
+   This is a wrapper around pg/execute! for consistency."
+  [db-spec [sql & params]]
+  (try
+    (log/debug {:event :db-query :sql sql :params params})
+    (pg/execute! db-spec (into [sql] params))
+    (catch Exception e
+      (log/error {:event :db-query-error :sql sql :params params :error (ex-message e)})
+      (throw e))))
+
 (defn create-table [db-spec table schema]
   (let [columns (->> schema
                     (map (fn [[col type]]
                           (let [type-str (if (vector? type)
                                          (case (second type)
                                            :primary-key (str (name (first type)) " PRIMARY KEY")
-                                           :default (str (name (first type)) 
-                                                       " DEFAULT " 
+                                           :default (str (name (first type))
+                                                       " DEFAULT "
                                                        (last type))
                                            (str/join " " (map name type)))
                                          (case type
@@ -60,8 +71,8 @@
 
 (defn record-exists? [db-spec table id]
   (-> (pg/execute! db-spec
-                   [(str "SELECT EXISTS(SELECT 1 FROM " table 
-                         " WHERE id = ?) AS exists") 
+                   [(str "SELECT EXISTS(SELECT 1 FROM " table
+                         " WHERE id = ?) AS exists")
                     id])
       first
       :exists))
@@ -121,4 +132,4 @@
       (catch Exception e
         (log/error {:event :db-save :action :error :table table :id id :error (ex-message e)})
         (throw e)))
-    record)) 
+    record))

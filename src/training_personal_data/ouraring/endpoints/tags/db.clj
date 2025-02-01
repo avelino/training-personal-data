@@ -1,5 +1,5 @@
 (ns training-personal-data.ouraring.endpoints.tags.db
-  (:require [training-personal-data.ouraring.db :as db]
+  (:require [training-personal-data.db :as db]
             [pod.babashka.postgresql :as pg]
             [clojure.string :as str]))
 
@@ -27,4 +27,4 @@
    (:text tag)
    (clj-vector->pg-array (:tags tag))
    (:timestamp tag)
-   (:raw_json tag)]) 
+   (:raw_json tag)])

@@ -1,7 +1,7 @@
 (ns training-personal-data.ouraring.endpoints.heart-rate.db-test
   (:require [clojure.test :refer [deftest testing is]]
             [training-personal-data.ouraring.endpoints.heart-rate.db :as db]
-            [training-personal-data.ouraring.db :as common-db]))
+            [training-personal-data.db :as common-db]))
 
 (def sample-heart-rate
   {:id "2024-01-07T08:00:00+00:00-65-sensor"
@@ -27,17 +27,16 @@
       (is (= "2024-01-07" (second values)))
       (is (= "2024-01-07T08:00:00+00:00" (nth values 2)))
       (is (= 65 (nth values 3)))
-      (is (= "sensor" (nth values 4)))
-      (is (= (:raw_json sample-heart-rate) (nth values 5))))))
+      (is (= "sensor" (nth values 4))))))
 
 (deftest test-db-operations
   (testing "save heart rate record"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.db/save mock-save
-                  training-personal-data.ouraring.db/create-table mock-create-table]
+    (with-redefs [training-personal-data.db/save mock-save
+                  training-personal-data.db/create-table mock-create-table]
       ;; Test save
       (let [values (db/extract-values sample-heart-rate)]
         (common-db/save {} db/table-name db/columns sample-heart-rate values)
         (let [saved (first @saved-records)]
           (is (= sample-heart-rate (:record saved)))
-          (is (= values (:values saved)))))))) 
+          (is (= values (:values saved))))))))

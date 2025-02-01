@@ -1,5 +1,5 @@
 (ns training-personal-data.ouraring.endpoints.readiness.db
-  (:require [training-personal-data.ouraring.db :as db]
+  (:require [training-personal-data.db :as db]
             [pod.babashka.postgresql :as pg]))
 
 (def table-name "ouraring_daily_readiness")
@@ -25,4 +25,4 @@
    (:temperature_trend readiness)
    (:temperature_deviation readiness)
    (:contributors_json readiness)
-   (:raw_json readiness)]) 
+   (:raw_json readiness)])

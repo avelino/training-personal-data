@@ -1,7 +1,7 @@
 (ns training-personal-data.ouraring.endpoints.activity.db-test
   (:require [clojure.test :refer [deftest testing is]]
             [training-personal-data.ouraring.endpoints.activity.db :as db]
-            [training-personal-data.ouraring.db :as common-db]))
+            [training-personal-data.db :as common-db]))
 
 (def sample-activity
   {:id "123"
@@ -54,11 +54,11 @@
 (deftest test-db-operations
   (testing "save activity record"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.db/save mock-save
-                  training-personal-data.ouraring.db/create-table mock-create-table]
+    (with-redefs [training-personal-data.db/save mock-save
+                  training-personal-data.db/create-table mock-create-table]
       ;; Test save
       (let [values (db/extract-values sample-activity)]
         (common-db/save {} db/table-name db/columns sample-activity values)
         (let [saved (first @saved-records)]
           (is (= sample-activity (:record saved)))
-          (is (= values (:values saved)))))))) 
+          (is (= values (:values saved))))))))
