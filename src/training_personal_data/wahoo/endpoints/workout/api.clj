@@ -2,8 +2,8 @@
   (:require [training-personal-data.wahoo.api :as api]
             [cheshire.core :as json]))
 
-(defn fetch [token workout-id]
-  (api/fetch-workout token workout-id))
+(defn fetch [token start-date end-date]
+  (api/fetch-workouts-by-date token start-date end-date))
 
 (defn normalize [workout]
   {:id (:id workout)

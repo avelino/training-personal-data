@@ -19,16 +19,24 @@
        :error {:status status
                :body body}})))
 
-(defn fetch-workout [token workout-id]
-  (log/info {:event :api-fetch :msg "Fetching workout" :workout-id workout-id})
-  (let [url (str host "/workouts/" workout-id)
+(defn fetch-workouts-by-date [token start-date end-date]
+  (log/info {:event :api-fetch :msg "Fetching workouts by date range"
+             :start start-date :end end-date})
+  (let [url (str host "/workouts")
+        params {:start start-date
+                :end end-date}
         response (-> url
-                     (http/get {:headers (build-headers token)})
+                     (http/get {:headers (build-headers token)
+                                :query-params params})
                      parse-response)]
     (if (:success? response)
       (do
-        (log/info {:event :api-success :msg "Successfully fetched workout"})
+        (log/info {:event :api-success
+                   :msg "Successfully fetched workouts"
+                   :count (count (:data response))})
         response)
       (do
-        (log/error {:event :api-error :msg "Failed to fetch workout" :status (get-in response [:error :status])})
+        (log/error {:event :api-error
+                    :msg "Failed to fetch workouts"
+                    :status (get-in response [:error :status])})
         response))))

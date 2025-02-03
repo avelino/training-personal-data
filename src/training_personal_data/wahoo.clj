@@ -4,7 +4,8 @@
             [training-personal-data.config :as config]))
 
 (defn -main [& args]
-  (let [token (first args)
-        workout-id (second args)
+  (let [token (System/getenv "WAHOO_TOKEN")
+        start-date (first args)
+        end-date (second args)
         db-spec (db/make-db-spec (config/get-db-config))]
-    (workout/fetch-and-save token workout-id db-spec)))
+    (workout/fetch-and-save-by-date token start-date end-date db-spec)))
