@@ -17,7 +17,7 @@
         missing-keys (remove #(get config %) required-keys)]
     (when (seq missing-keys)
       (throw (ex-info "Missing required database configuration keys"
-                     {:missing missing-keys}))))
+                      {:missing missing-keys}))))
 
   (let [spec {:dbtype "postgresql"
               :dbname (:dbname config)
@@ -51,20 +51,20 @@
 
 (defn create-table [db-spec table schema]
   (let [columns (->> schema
-                    (map (fn [[col type]]
-                          (let [type-str (if (vector? type)
-                                         (case (second type)
-                                           :primary-key (str (name (first type)) " PRIMARY KEY")
-                                           :default (str (name (first type))
-                                                       " DEFAULT "
-                                                       (last type))
-                                           (str/join " " (map name type)))
-                                         (case type
-                                           :jsonb "jsonb"
-                                           (name type)))
-                                col-name (normalize-column-name col)]
-                            (str col-name " " type-str))))
-                    (str/join ",\n"))
+                     (map (fn [[col type]]
+                            (let [type-str (if (vector? type)
+                                             (case (second type)
+                                               :primary-key (str (name (first type)) " PRIMARY KEY")
+                                               :default (str (name (first type))
+                                                             " DEFAULT "
+                                                             (last type))
+                                               (str/join " " (map name type)))
+                                             (case type
+                                               :jsonb "jsonb"
+                                               (name type)))
+                                  col-name (normalize-column-name col)]
+                              (str col-name " " type-str))))
+                     (str/join ",\n"))
         sql (str "CREATE TABLE IF NOT EXISTS " table " (\n" columns "\n)")]
     (log/info {:event :db-create-table :msg "Ensuring table exists" :table table})
     (pg/execute! db-spec [sql])))
@@ -80,34 +80,34 @@
 (defn build-update-sql [table columns]
   (let [update-columns (remove #(= % "id") columns)
         set-pairs (map (fn [col]
-                        (let [col-name (normalize-column-name col)]
-                          (cond
-                            (= col-name "date") (str col-name " = ?::date")
-                            (str/ends-with? col-name "_datetime") (str col-name " = ?::timestamp")
-                            (= col-name "timestamp") (str col-name " = ?::timestamp")
-                            (= col-name "tags") (str col-name " = ?::text[]")
-                            (or (= col-name "raw_json")
-                                (= col-name "met")
-                                (= col-name "day_summary")
-                                (str/ends-with? col-name "_json")) (str col-name " = ?::jsonb")
-                            :else (str col-name " = ?"))))
-                      update-columns)
+                         (let [col-name (normalize-column-name col)]
+                           (cond
+                             (= col-name "date") (str col-name " = ?::date")
+                             (str/ends-with? col-name "_datetime") (str col-name " = ?::timestamp")
+                             (= col-name "timestamp") (str col-name " = ?::timestamp")
+                             (= col-name "tags") (str col-name " = ?::text[]")
+                             (or (= col-name "raw_json")
+                                 (= col-name "met")
+                                 (= col-name "day_summary")
+                                 (str/ends-with? col-name "_json")) (str col-name " = ?::jsonb")
+                             :else (str col-name " = ?"))))
+                       update-columns)
         set-clause (str/join ", " set-pairs)]
     (str "UPDATE " table " SET " set-clause " WHERE id = ?")))
 
 (defn build-insert-sql [table columns]
   (let [normalized-columns (map normalize-column-name columns)
         placeholders (map #(cond
-                           (= % "date") "?::date"
-                           (str/ends-with? % "_datetime") "?::timestamp"
-                           (= % "timestamp") "?::timestamp"
-                           (= % "tags") "?::text[]"
-                           (or (= % "raw_json")
-                               (= % "met")
-                               (= % "day_summary")
-                               (str/ends-with? % "_json")) "?::jsonb"
-                           :else "?")
-                        normalized-columns)]
+                             (= % "date") "?::date"
+                             (str/ends-with? % "_datetime") "?::timestamp"
+                             (= % "timestamp") "?::timestamp"
+                             (= % "tags") "?::text[]"
+                             (or (= % "raw_json")
+                                 (= % "met")
+                                 (= % "day_summary")
+                                 (str/ends-with? % "_json")) "?::jsonb"
+                             :else "?")
+                          normalized-columns)]
     (str "INSERT INTO " table " ("
          (str/join ", " normalized-columns)
          ") VALUES ("
