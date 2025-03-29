@@ -95,13 +95,27 @@
       result)))
 
 (defn safe-double [value]
-  (if (and value (not= value 0) (not= value ""))
-    (let [result (double value)]
-      (log/debug {:event :safe-double-conversion :input value :output result})
-      result)
+  (if (or (nil? value) (= value "")) ;; Check for nil or empty string first
     (do
-      (log/debug {:event :safe-double-conversion :input value :output nil :reason "null or empty value"})
-      nil)))
+      (log/debug {:event :safe-double-conversion :input value :output nil :reason "nil or empty value"})
+      nil)
+    (try
+      (let [num-value (if (string? value)
+                        (Double/parseDouble value)
+                        (double value))] ;; Cast potential non-double numbers to double
+        (if (= num-value 0.0)
+          (do
+            (log/debug {:event :safe-double-conversion :input value :output nil :reason "value is zero"})
+            nil)
+          (do
+            (log/debug {:event :safe-double-conversion :input value :output num-value})
+            num-value))) ;; Return the valid, non-zero double
+      (catch NumberFormatException _
+        (log/debug {:event :safe-double-conversion :input value :output nil :reason "invalid number format"})
+        nil)
+      (catch Exception e ; Catch other potential errors (like casting non-numbers)
+        (log/error {:event :safe-double-conversion :input value :error (ex-message e) :reason "conversion error"})
+        nil))))
 
 (defn format-data-for-gpt [sleep-data readiness-data activity-data date-range]
   (let [sleep-duration (safe-double (get-in sleep-data [0 :avg_sleep_duration]))
