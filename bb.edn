@@ -6,12 +6,12 @@
         scicloj/tablecloth {:mvn/version "7.021"}
         scicloj/metamorph {:mvn/version "0.2.0"}
         techascent/tech.ml.dataset {:mvn/version "7.021"}}
- 
+
  :tasks
  {:requires ([babashka.fs :as fs])
   :init (do
           (def version "1.0.0"))
-  
+
   run:oura {:doc "Run ouraring all endpoint"
             :task (do
                     (println "\nRun ouraring all endpoint")
@@ -22,10 +22,17 @@
           :task (do
                   (println "\nRunning ML analysis")
                   (let [args *command-line-args*]
-                    (shell (format "bb -cp src -m training-personal-data.ml.core %s %s" 
-                                 (first args) (second args)))))}
+                    (shell (format "bb -cp src -m training-personal-data.ml.core %s %s"
+                                   (first args) (second args)))))}
+
+  run:week-insight {:doc "Generate weekly insights from Oura Ring data using GPT"
+                    :task (do
+                            (println "\nGenerating weekly insights from Oura Ring data")
+                            (let [args *command-line-args*]
+                              (shell (format "bb -cp src -m training-personal-data.insights.week %s"
+                                             (first args)))))}
 
   test {:doc "Run all tests"
         :task (do
-               (println "\nRunning tests...")
-               (shell "bb -cp test:src -m training-personal-data.test-runner"))}}}
+                (println "\nRunning tests...")
+                (shell "bb -cp test:src -m training-personal-data.test-runner"))}}}
