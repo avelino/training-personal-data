@@ -26,7 +26,7 @@ jobs:
           OPENAI_API_KEY: "${{ secrets.OPENAI_API_KEY }}"
         run: |
           # Calculate the previous Sunday's date (day before Monday execution)
-          SUNDAY_DATE=$(date -d "yesterday" '+%Y-%m-%d')
+          SUNDAY_DATE=$(TZ=UTC date -d "yesterday" '+%Y-%m-%d')
           echo "Generating insights for week ending on: $SUNDAY_DATE"
 
           # Execute the weekly insights command
