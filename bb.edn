@@ -12,11 +12,13 @@
   :init (do
           (def version "1.0.0"))
 
-  run:oura {:doc "Run ouraring all endpoint"
-            :task (do
-                    (println "\nRun ouraring all endpoint")
-                    (let [args *command-line-args*]
-                      (shell (format "bb -cp src -m training-personal-data.ouraring %s %s" (first args) (second args)))))}
+  run:oura {:doc "Run ouraring with batch processing"
+                  :task (do
+                          (println "\nRun ouraring with batch processing")
+                          (let [args *command-line-args*
+                                batch-size (or (nth args 2 nil) "50")]
+                            (shell (format "bb -cp src -m training-personal-data.ouraring %s %s --batch-size %s"
+                                           (first args) (second args) batch-size))))}
 
   run:ml {:doc "Run ML analysis on Oura Ring data"
           :task (do
