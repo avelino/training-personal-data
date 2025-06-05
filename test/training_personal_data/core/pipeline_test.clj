@@ -63,6 +63,8 @@
                                    :values values})
   record)
 
+(def mock-db-spec {:mock true})
+
 (deftest test-create-endpoint-config
   (testing "Creating endpoint configuration"
     (let [config (pipeline/create-endpoint-config
@@ -87,7 +89,7 @@
 
     (with-redefs [training-personal-data.db/create-table mock-create-table
                   training-personal-data.db/save mock-save]
-      (pipeline/execute-pipeline test-config "fake-token" "2024-01-01" "2024-01-07" {:mock true})
+      (pipeline/execute-pipeline test-config "fake-token" "2024-01-01" "2024-01-07" mock-db-spec)
 
       (let [ops @captured-operations]
         ;; Should create table once
@@ -105,101 +107,101 @@
         (let [save-ops (filter #(= (:op %) :save) ops)]
           (is (every? #(= "test_table" (:table %)) save-ops))
           (is (every? #(= mock-columns (:columns %)) save-ops))
-          (is (every? #(true? (get-in % [:record :normalized])) save-ops)))))))
+          (is (every? #(true? (get-in % [:record :normalized])) save-ops))))))
 
-(deftest test-execute-pipeline-failure
-  (testing "Pipeline execution with fetch failure"
-    (reset! captured-operations [])
+  (deftest test-execute-pipeline-failure
+    (testing "Pipeline execution with fetch failure"
+      (reset! captured-operations [])
 
-    (with-redefs [training-personal-data.db/create-table mock-create-table
-                  training-personal-data.db/save mock-save]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Failed to fetch failing-endpoint data"
-           (pipeline/execute-pipeline failing-config "fake-token" "2024-01-01" "2024-01-07" {:mock true})))
+      (with-redefs [training-personal-data.db/create-table mock-create-table
+                    training-personal-data.db/save mock-save]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Failed to fetch failing-endpoint data"
+             (pipeline/execute-pipeline failing-config "fake-token" "2024-01-01" "2024-01-07" mock-db-spec))))
 
       ;; Should still create table but not save any records
       (let [ops @captured-operations]
         (is (= 1 (count (filter #(= (:op %) :create-table) ops))))
-        (is (= 0 (count (filter #(= (:op %) :save) ops))))))))
+        (is (= 0 (count (filter #(= (:op %) :save) ops))))))
 
-(deftest test-batch-execute-pipeline
-  (testing "Batch pipeline execution"
-    (reset! captured-operations [])
+    (deftest test-batch-execute-pipeline
+      (testing "Batch pipeline execution"
+        (reset! captured-operations [])
 
-    (with-redefs [training-personal-data.db/create-table mock-create-table
-                  training-personal-data.db/save mock-save]
-      (pipeline/batch-execute-pipeline test-config "fake-token" "2024-01-01" "2024-01-07" {:mock true}
-                                       :batch-size 1)
+        (with-redefs [training-personal-data.db/create-table mock-create-table
+                      training-personal-data.db/save mock-save]
+          (pipeline/batch-execute-pipeline test-config "fake-token" "2024-01-01" "2024-01-07" mock-db-spec
+                                           :batch-size 1)
 
-      (let [ops @captured-operations]
-        ;; Should create table once
-        (is (= 1 (count (filter #(= (:op %) :create-table) ops))))
+          (let [ops @captured-operations]
+            ;; Should create table once
+            (is (= 1 (count (filter #(= (:op %) :create-table) ops))))
 
-        ;; Should save two records (same as regular pipeline)
-        (is (= 2 (count (filter #(= (:op %) :save) ops))))))))
+            ;; Should save two records (same as regular pipeline)
+            (is (= 2 (count (filter #(= (:op %) :save) ops)))))))
 
-(deftest test-data-transformation
-  (testing "Data transformation pipeline"
-    (let [raw-data [{:id "raw-1" :name "Raw Record" :value 100}]
-          normalized (mock-normalize (first raw-data))
-          values (mock-extract-values normalized)]
+      (deftest test-data-transformation
+        (testing "Data transformation pipeline"
+          (let [raw-data [{:id "raw-1" :name "Raw Record" :value 100}]
+                normalized (mock-normalize (first raw-data))
+                values (mock-extract-values normalized)]
 
-      ;; Check normalization
-      (is (true? (:normalized normalized)))
-      (is (= "2024-01-01" (:timestamp normalized)))
-      (is (= "raw-1" (:id normalized)))
+            ;; Check normalization
+            (is (true? (:normalized normalized)))
+            (is (= "2024-01-01" (:timestamp normalized)))
+            (is (= "raw-1" (:id normalized)))
 
-      ;; Check value extraction
-      (is (= ["raw-1" "Raw Record" 100 "2024-01-01"] values)))))
+            ;; Check value extraction
+            (is (= ["raw-1" "Raw Record" 100 "2024-01-01"] values)))))
 
-(deftest test-configuration-validation
-  (testing "Configuration parameter validation"
-    (let [config test-config]
-      (is (string? (:name config)))
-      (is (string? (:table-name config)))
-      (is (vector? (:columns config)))
-      (is (map? (:schema config)))
-      (is (ifn? (:fetch-fn config)))
-      (is (ifn? (:normalize-fn config)))
-      (is (ifn? (:extract-values-fn config))))))
+      (deftest test-configuration-validation
+        (testing "Configuration parameter validation"
+          (let [config test-config]
+            (is (string? (:name config)))
+            (is (string? (:table-name config)))
+            (is (vector? (:columns config)))
+            (is (map? (:schema config)))
+            (is (ifn? (:fetch-fn config)))
+            (is (ifn? (:normalize-fn config)))
+            (is (ifn? (:extract-values-fn config))))))
 
-(deftest test-integration-without-db
-  (testing "Integration test without real database"
-    ;; This test verifies the pipeline flow without actual database operations
-    (let [test-data (atom [])
-          mock-config (-> test-config
-                          (assoc :fetch-fn (fn [_ _ _]
-                                             {:success? true
-                                              :data [{:id "integration-test" :value 999}]}))
-                          (assoc :normalize-fn (fn [record]
-                                                 (swap! test-data conj record)
-                                                 (assoc record :processed true)))
-                          (assoc :extract-values-fn (fn [record]
-                                                      [(:id record) (:value record) (:processed record)])))]
+      (deftest test-integration-without-db
+        (testing "Integration test without real database"
+          ;; This test verifies the pipeline flow without actual database operations
+          (let [test-data (atom [])
+                mock-config (-> test-config
+                                (assoc :fetch-fn (fn [_ _ _]
+                                                   {:success? true
+                                                    :data [{:id "integration-test" :value 999}]}))
+                                (assoc :normalize-fn (fn [record]
+                                                       (swap! test-data conj record)
+                                                       (assoc record :processed true)))
+                                (assoc :extract-values-fn (fn [record]
+                                                            [(:id record) (:value record) (:processed record)])))]
 
-      (with-redefs [training-personal-data.db/create-table (fn [& _] nil)
-                    training-personal-data.db/save (fn [& args] (last args))]
-        (pipeline/execute-pipeline mock-config "token" "2024-01-01" "2024-01-07" {:mock true})
+            (with-redefs [training-personal-data.db/create-table (fn [& _] nil)
+                          training-personal-data.db/save (fn [& args] (last args))]
+              (pipeline/execute-pipeline mock-config "token" "2024-01-01" "2024-01-07" mock-db-spec)
 
-        ;; Verify data flowed through the pipeline
-        (is (= 1 (count @test-data)))
-        (is (= "integration-test" (:id (first @test-data))))
-        (is (= 999 (:value (first @test-data))))))))
+              ;; Verify data flowed through the pipeline
+              (is (= 1 (count @test-data)))
+              (is (= "integration-test" (:id (first @test-data))))
+              (is (= 999 (:value (first @test-data))))))))
 
-;; Performance test (basic)
-(deftest test-pipeline-performance
-  (testing "Pipeline performance with multiple records"
-    (let [large-dataset (repeatedly 100 #(hash-map :id (str "perf-" (rand-int 10000))
-                                                   :name "Performance Test"
-                                                   :value (rand-int 1000)))
-          perf-config (assoc test-config
-                             :fetch-fn (fn [_ _ _] {:success? true :data large-dataset}))]
+      ;; Performance test (basic)
+      (deftest test-pipeline-performance
+        (testing "Pipeline performance with multiple records"
+          (let [large-dataset (repeatedly 100 #(hash-map :id (str "perf-" (rand-int 10000))
+                                                         :name "Performance Test"
+                                                         :value (rand-int 1000)))
+                perf-config (assoc test-config
+                                   :fetch-fn (fn [_ _ _] {:success? true :data large-dataset}))]
 
-      (with-redefs [training-personal-data.db/create-table (fn [& _] nil)
-                    training-personal-data.db/save (fn [& args] (last args))]
-        (let [start-time (System/currentTimeMillis)]
-          (pipeline/execute-pipeline perf-config "token" "2024-01-01" "2024-01-07" {:mock true})
-          (let [duration (- (System/currentTimeMillis) start-time)]
-            ;; Should complete within reasonable time (adjust threshold as needed)
-            (is (< duration 5000) "Pipeline should complete within 5 seconds for 100 records")))))))
+            (with-redefs [training-personal-data.db/create-table (fn [& _] nil)
+                          training-personal-data.db/save (fn [& args] (last args))]
+              (let [start-time (System/currentTimeMillis)]
+                (pipeline/execute-pipeline perf-config "token" "2024-01-01" "2024-01-07" mock-db-spec)
+                (let [duration (- (System/currentTimeMillis) start-time)]
+                  ;; Should complete within reasonable time (adjust threshold as needed)
+                  (is (< duration 5000) "Pipeline should complete within 5 seconds for 100 records")))))))
