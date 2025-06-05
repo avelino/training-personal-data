@@ -1,23 +1,27 @@
 (ns training-personal-data.ouraring.endpoints.tags.core
   (:require [training-personal-data.ouraring.endpoints.tags.api :as api]
             [training-personal-data.ouraring.endpoints.tags.db :as db]
-            [training-personal-data.db :as common-db]
-            [taoensso.timbre :as log]))
+            [training-personal-data.core.pipeline :as pipeline]))
 
-(defn fetch-and-save [token start-date end-date db-spec]
-  (log/info {:event :tags-process :msg "Processing tags data"})
-  ;; Ensure table exists
-  (common-db/create-table db-spec db/table-name db/schema)
+(def tags-config
+  "Tags endpoint configuration using the generic pipeline"
+  (pipeline/create-endpoint-config
+   "tags"
+   db/table-name
+   db/columns
+   db/schema
+   api/fetch
+   api/normalize
+   db/extract-values))
 
-  (let [{:keys [success? data error]} (api/fetch token start-date end-date)]
-    (if success?
-      (do
-        (log/info {:event :tags-save :msg "Processing tags records" :count (count data)})
-        (doseq [tag data]
-          (let [normalized (api/normalize tag)]
-            (log/info {:event :tags-save-record
-                      :msg "Saving tag record"
-                      :id (:id normalized)})
-            (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized))))
-        (log/info {:event :tags-complete :msg "Successfully processed all tags records"}))
-      (throw (ex-info "Failed to fetch tags data" error)))))
+(defn fetch-and-save
+  "Refactored function using the generic pipeline.
+   This replaces the old repetitive code with a single pipeline call."
+  [token start-date end-date db-spec]
+  (pipeline/execute-pipeline tags-config token start-date end-date db-spec))
+
+(defn fetch-and-save-batch
+  "Batch version for better performance with large datasets"
+  [token start-date end-date db-spec & {:keys [batch-size] :or {batch-size 50}}]
+  (pipeline/batch-execute-pipeline tags-config token start-date end-date db-spec
+                                   :batch-size batch-size))
