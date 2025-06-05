@@ -1,23 +1,27 @@
 (ns training-personal-data.ouraring.endpoints.workout.core
   (:require [training-personal-data.ouraring.endpoints.workout.api :as api]
             [training-personal-data.ouraring.endpoints.workout.db :as db]
-            [training-personal-data.db :as common-db]
-            [taoensso.timbre :as log]))
+            [training-personal-data.core.pipeline :as pipeline]))
 
-(defn fetch-and-save [token start-date end-date db-spec]
-  (log/info {:event :workout-process :msg "Processing workout data"})
-  ;; Ensure table exists
-  (common-db/create-table db-spec db/table-name db/schema)
+(def workout-config
+  "Workout endpoint configuration using the generic pipeline"
+  (pipeline/create-endpoint-config
+   "workout"
+   db/table-name
+   db/columns
+   db/schema
+   api/fetch
+   api/normalize
+   db/extract-values))
 
-  (let [{:keys [success? data error]} (api/fetch token start-date end-date)]
-    (if success?
-      (do
-        (log/info {:event :workout-save :msg "Processing workout records" :count (count data)})
-        (doseq [workout data]
-          (let [normalized (api/normalize workout)]
-            (log/info {:event :workout-save-record
-                      :msg "Saving workout record"
-                      :id (:id normalized)})
-            (common-db/save db-spec db/table-name db/columns normalized (db/extract-values normalized))))
-        (log/info {:event :workout-complete :msg "Successfully processed all workout records"}))
-      (throw (ex-info "Failed to fetch workout data" error)))))
+(defn fetch-and-save
+  "Refactored function using the generic pipeline.
+   This replaces the old repetitive code with a single pipeline call."
+  [token start-date end-date db-spec]
+  (pipeline/execute-pipeline workout-config token start-date end-date db-spec))
+
+(defn fetch-and-save-batch
+  "Batch version for better performance with large datasets"
+  [token start-date end-date db-spec & {:keys [batch-size] :or {batch-size 50}}]
+  (pipeline/batch-execute-pipeline workout-config token start-date end-date db-spec
+                                   :batch-size batch-size))
