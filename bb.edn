@@ -13,12 +13,12 @@
           (def version "1.0.0"))
 
   run:oura {:doc "Run ouraring with batch processing"
-                  :task (do
-                          (println "\nRun ouraring with batch processing")
-                          (let [args *command-line-args*
-                                batch-size (or (nth args 2 nil) "50")]
-                            (shell (format "bb -cp src -m training-personal-data.ouraring %s %s --batch-size %s"
-                                           (first args) (second args) batch-size))))}
+            :task (do
+                    (println "\nRun ouraring with batch processing")
+                    (let [args *command-line-args*
+                          batch-size (or (nth args 2 nil) "50")]
+                      (shell (format "bb -cp src -m training-personal-data.ouraring %s %s --batch-size %s"
+                                     (first args) (second args) batch-size))))}
 
   run:ml {:doc "Run ML analysis on Oura Ring data"
           :task (do
@@ -37,4 +37,14 @@
   test {:doc "Run all tests"
         :task (do
                 (println "\nRunning tests...")
-                (shell "bb -cp test:src -m training-personal-data.test-runner"))}}}
+                (shell "bb -cp test:src -m training-personal-data.test-runner"))}
+
+  test:pipeline {:doc "Run pipeline tests only"
+                 :task (do
+                         (println "\nRunning pipeline tests...")
+                         (shell "bb -cp test:src -e \"(require '[training-personal-data.core.pipeline-test]) (clojure.test/run-tests 'training-personal-data.core.pipeline-test)\""))}
+
+  test:working {:doc "Run only working tests"
+                :task (do
+                        (println "\nRunning working tests...")
+                        (shell "bb test:pipeline"))}}}

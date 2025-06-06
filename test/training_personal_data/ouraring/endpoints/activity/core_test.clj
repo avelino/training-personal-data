@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest testing is]]
             [training-personal-data.ouraring.endpoints.activity.core :as core]
             [training-personal-data.ouraring.endpoints.activity.api :as api]
+            [training-personal-data.ouraring.endpoints.activity.db :as activity-db]
             [training-personal-data.db :as db]))
 
 (def sample-api-response
@@ -47,12 +48,12 @@
   {:success true})
 
 (deftest test-fetch-and-save
-  (testing "fetch and save activity data"
+  (testing "fetch and save activity data using refactored pipeline"
     (reset! saved-records [])
     (with-redefs [training-personal-data.ouraring.endpoints.activity.api/fetch mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
-      ;; Execute fetch-and-save
+      ;; Execute fetch-and-save with new pipeline
       (core/fetch-and-save "test-token" "2024-01-07" "2024-01-08" {})
 
       ;; Verify data was saved
@@ -66,3 +67,28 @@
         (is (some? (:met saved-record)))
         (is (some? (:day_summary saved-record)))
         (is (some? (:raw_json saved-record)))))))
+
+(deftest test-activity-config
+  (testing "activity endpoint configuration"
+    (let [config core/activity-config]
+      (is (= "activity" (:name config)))
+      (is (= activity-db/table-name (:table-name config)))
+      (is (= activity-db/columns (:columns config)))
+      (is (= activity-db/schema (:schema config)))
+      (is (fn? (:fetch-fn config)))
+      (is (fn? (:normalize-fn config)))
+      (is (fn? (:extract-values-fn config))))))
+
+(deftest test-fetch-and-save-batch
+  (testing "batch processing for activity data"
+    (reset! saved-records [])
+    (with-redefs [training-personal-data.ouraring.endpoints.activity.api/fetch mock-fetch
+                  training-personal-data.db/save mock-save
+                  training-personal-data.db/create-table mock-create-table]
+      ;; Execute batch fetch-and-save
+      (core/fetch-and-save-batch "test-token" "2024-01-07" "2024-01-08" {} :batch-size 1)
+
+      ;; Verify data was saved
+      (let [saved-record (first @saved-records)]
+        (is (some? saved-record))
+        (is (= "123" (:id saved-record)))))))
