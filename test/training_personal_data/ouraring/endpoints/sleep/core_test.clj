@@ -66,10 +66,10 @@
     (with-redefs [oura-api/fetch-data mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
-        ;; Execute batch fetch-and-save
+      ;; Execute batch fetch-and-save
       (core/fetch-and-save-batch "test-token" "2024-01-07" "2024-01-08" {} :batch-size 1)
 
-        ;; Verify data was saved
+      ;; Verify data was saved
       (let [saved-record (first @saved-records)]
         (is (some? saved-record))
         (is (= "123" (:id saved-record)))))))
