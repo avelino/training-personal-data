@@ -12,7 +12,7 @@
            :tags ["test" "sample"]
            :timestamp "2024-01-07T08:00:00+00:00"}]})
 
-(defn mock-fetch [token start-date end-date]
+(defn mock-fetch [token endpoint start-date end-date]
   sample-api-response)
 
 (def saved-records (atom []))
@@ -27,7 +27,7 @@
 (deftest test-fetch-and-save
   (testing "fetch and save tags data"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.endpoints.tags.api/fetch mock-fetch
+    (with-redefs [training-personal-data.ouraring.api/fetch-data mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
       ;; Execute fetch-and-save
