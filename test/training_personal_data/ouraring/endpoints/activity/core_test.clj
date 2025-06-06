@@ -82,7 +82,7 @@
 (deftest test-fetch-and-save-batch
   (testing "batch processing for activity data"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.api/fetch-data mock-fetch
+    (with-redefs [training-personal-data.ouraring.endpoints.activity.api/fetch mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
       ;; Execute batch fetch-and-save

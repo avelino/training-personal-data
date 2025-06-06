@@ -13,21 +13,12 @@
           (def version "1.0.0"))
 
   run:oura {:doc "Run ouraring with batch processing"
-<<<<<<< HEAD
             :task (do
                     (println "\nRun ouraring with batch processing")
                     (let [args *command-line-args*
                           batch-size (or (nth args 2 nil) "50")]
                       (shell (format "bb -cp src -m training-personal-data.ouraring %s %s --batch-size %s"
                                      (first args) (second args) batch-size))))}
-=======
-                  :task (do
-                          (println "\nRun ouraring with batch processing")
-                          (let [args *command-line-args*
-                                batch-size (or (nth args 2 nil) "50")]
-                            (shell (format "bb -cp src -m training-personal-data.ouraring %s %s --batch-size %s"
-                                           (first args) (second args) batch-size))))}
->>>>>>> b679df6 (refactor: implement pipeline design to simplify data flow chaining)
 
   run:ml {:doc "Run ML analysis on Oura Ring data"
           :task (do
@@ -35,13 +26,6 @@
                   (let [args *command-line-args*]
                     (shell (format "bb -cp src -m training-personal-data.ml.core %s %s"
                                    (first args) (second args)))))}
-
-  run:wahoo {:doc "Run wahoo endpoint with date range (YYYY-MM-DD YYYY-MM-DD)"
-             :task (do
-                     (println "\nRun wahoo endpoint")
-                     (let [args *command-line-args*]
-                       (shell (format "bb -cp src -m training-personal-data.wahoo %s %s"
-                                      (first args) (second args)))))}
 
   run:week-insight {:doc "Generate weekly insights from Oura Ring data using GPT"
                     :task (do

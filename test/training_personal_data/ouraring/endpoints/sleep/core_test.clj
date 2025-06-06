@@ -47,29 +47,29 @@
         (is (= 80 (:deep_sleep saved-record)))
         (is (= 90 (:efficiency saved-record)))
         (is (some? (:contributors_json saved-record)))
-        (is (some? (:raw_json saved-record)))))))
+        (is (some? (:raw_json saved-record))))))
 
-(deftest test-sleep-config
-  (testing "sleep endpoint configuration"
-    (let [config core/sleep-config]
-      (is (= "sleep" (:name config)))
-      (is (= sleep-db/table-name (:table-name config)))
-      (is (= sleep-db/columns (:columns config)))
-      (is (= sleep-db/schema (:schema config)))
-      (is (fn? (:fetch-fn config)))
-      (is (fn? (:normalize-fn config)))
-      (is (fn? (:extract-values-fn config))))))
+  (deftest test-sleep-config
+    (testing "sleep endpoint configuration"
+      (let [config core/sleep-config]
+        (is (= "sleep" (:name config)))
+        (is (= sleep-db/table-name (:table-name config)))
+        (is (= sleep-db/columns (:columns config)))
+        (is (= sleep-db/schema (:schema config)))
+        (is (fn? (:fetch-fn config)))
+        (is (fn? (:normalize-fn config)))
+        (is (fn? (:extract-values-fn config))))))
 
-(deftest test-fetch-and-save-batch
-  (testing "batch processing for sleep data"
-    (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.api/fetch-data mock-fetch
-                  training-personal-data.db/save mock-save
-                  training-personal-data.db/create-table mock-create-table]
+  (deftest test-fetch-and-save-batch
+    (testing "batch processing for sleep data"
+      (reset! saved-records [])
+      (with-redefs [training-personal-data.ouraring.endpoints.sleep.api/fetch mock-fetch
+                    training-personal-data.db/save mock-save
+                    training-personal-data.db/create-table mock-create-table]
         ;; Execute batch fetch-and-save
-      (core/fetch-and-save-batch "test-token" "2024-01-07" "2024-01-08" {} :batch-size 1)
+        (core/fetch-and-save-batch "test-token" "2024-01-07" "2024-01-08" {} :batch-size 1)
 
         ;; Verify data was saved
-      (let [saved-record (first @saved-records)]
-        (is (some? saved-record))
-        (is (= "123" (:id saved-record)))))))
+        (let [saved-record (first @saved-records)]
+          (is (some? saved-record))
+          (is (= "123" (:id saved-record)))))))

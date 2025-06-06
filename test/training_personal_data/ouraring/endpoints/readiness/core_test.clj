@@ -42,8 +42,8 @@
         (is (some? saved-record))
         (is (= "123" (:id saved-record)))
         (is (= 85 (:score saved-record)))
-        (is (= 0.5 (:temperature_trend saved-record)))
-        (is (= 0.3 (:temperature_deviation saved-record)))
+        (is (= 80 (:activity_balance saved-record)))
+        (is (= 90 (:body_temperature saved-record)))
         (is (some? (:contributors_json saved-record)))
         (is (some? (:raw_json saved-record))))))
 
@@ -61,7 +61,7 @@
   (deftest test-fetch-and-save-batch
     (testing "batch processing for readiness data"
       (reset! saved-records [])
-      (with-redefs [training-personal-data.ouraring.api/fetch-data mock-fetch
+      (with-redefs [training-personal-data.ouraring.endpoints.readiness.api/fetch mock-fetch
                     training-personal-data.db/save mock-save
                     training-personal-data.db/create-table mock-create-table]
         ;; Execute batch fetch-and-save
