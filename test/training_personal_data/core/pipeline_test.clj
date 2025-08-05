@@ -1,6 +1,14 @@
 (ns training-personal-data.core.pipeline-test
-  (:require [clojure.test :refer [deftest is testing]]
-            [training-personal-data.core.pipeline :as pipeline]))
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [training-personal-data.core.pipeline :as pipeline]
+            [training-personal-data.cache :as cache]))
+
+;; Clear cache before each test to ensure clean state
+(defn clear-cache-fixture [f]
+  (cache/clear!)
+  (f))
+
+(use-fixtures :each clear-cache-fixture)
 
 (defn mock-fetch-success [token start-date end-date]
   {:success? true
@@ -166,6 +174,10 @@
 
 (deftest test-integration-without-db
   (testing "Integration test without real database"
+    ;; Clear cache before test to ensure clean state
+    (require '[training-personal-data.cache :as cache])
+    (cache/clear!)
+    
     ;; This test verifies the pipeline flow without actual database operations
     (let [test-data (atom [])
           mock-config (-> test-config
@@ -180,7 +192,8 @@
 
       (with-redefs [training-personal-data.db/create-table (fn [& _] nil)
                     training-personal-data.db/save (fn [& args] (last args))]
-        (pipeline/execute-pipeline mock-config "token" "2024-01-01" "2024-01-07" {:mock true})
+        ;; Disable cache for this test to ensure fresh data processing
+        (pipeline/execute-pipeline mock-config "token" "2024-01-01" "2024-01-07" {:mock true} :use-cache false)
 
         ;; Verify data flowed through the pipeline
         (is (= 1 (count @test-data)))
@@ -190,6 +203,10 @@
 ;; Performance test (basic)
 (deftest test-pipeline-performance
   (testing "Pipeline performance with multiple records"
+    ;; Clear cache before performance test
+    (require '[training-personal-data.cache :as cache])
+    (cache/clear!)
+    
     (let [large-dataset (repeatedly 100 #(hash-map :id (str "perf-" (rand-int 10000))
                                                    :name "Performance Test"
                                                    :value (rand-int 1000)))
@@ -199,7 +216,8 @@
       (with-redefs [training-personal-data.db/create-table (fn [& _] nil)
                     training-personal-data.db/save (fn [& args] (last args))]
         (let [start-time (System/currentTimeMillis)]
-          (pipeline/execute-pipeline perf-config "token" "2024-01-01" "2024-01-07" {:mock true})
+          ;; Disable cache for performance test to measure actual processing time
+          (pipeline/execute-pipeline perf-config "token" "2024-01-01" "2024-01-07" {:mock true} :use-cache false)
           (let [duration (- (System/currentTimeMillis) start-time)]
             ;; Should complete within reasonable time (adjust threshold as needed)
             (is (< duration 5000) "Pipeline should complete within 5 seconds for 100 records")))))))

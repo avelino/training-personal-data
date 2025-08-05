@@ -13,5 +13,14 @@ jobs:
         uses: turtlequeue/setup-babashka@v1.7.0
         with:
           babashka-version: 1.12.196
+      - name: Cache babashka dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-babashka-${{ hashFiles('bb.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-babashka-
+      - name: Download dependencies
+        run: bb -e "(println \"Dependencies ready\")"
       - name: Run tests
         run: bb test
