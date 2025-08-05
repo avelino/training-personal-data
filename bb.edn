@@ -5,7 +5,18 @@
         org.scicloj/noj {:mvn/version "2-beta4"}
         scicloj/tablecloth {:mvn/version "7.021"}
         scicloj/metamorph {:mvn/version "0.2.0"}
-        techascent/tech.ml.dataset {:mvn/version "7.021"}}
+        techascent/tech.ml.dataset {:mvn/version "7.021"}
+        
+        ;; Web Dashboard Dependencies
+        ring/ring-core {:mvn/version "1.9.6"}
+        ring/ring-jetty-adapter {:mvn/version "1.9.6"}
+        ring/ring-defaults {:mvn/version "0.3.4"}
+        ring/ring-json {:mvn/version "0.5.1"}
+        compojure/compojure {:mvn/version "1.7.0"}
+        hiccup/hiccup {:mvn/version "2.0.0-RC3"}
+        
+        ;; Additional utilities
+        clj-time/clj-time {:mvn/version "0.15.2"}}
 
  :tasks
  {:requires ([babashka.fs :as fs])
@@ -34,6 +45,11 @@
                               (shell (format "bb -cp src -m training-personal-data.insights.week %s"
                                              (first args)))))}
 
+  run:dashboard {:doc "Start the web dashboard server"
+                 :task (do
+                         (println "\nStarting web dashboard...")
+                         (shell "bb -cp src -m training-personal-data.web.dashboard"))}
+
   test {:doc "Run all tests"
         :task (do
                 (println "\nRunning tests...")
@@ -47,4 +63,52 @@
   test:working {:doc "Run only working tests"
                 :task (do
                         (println "\nRunning working tests...")
-                        (shell "bb test:pipeline"))}}}
+                        (shell "bb test:pipeline"))}
+
+  health:check {:doc "Check system health and display statistics"
+                :task (do
+                        (println "\nChecking system health...")
+                        (shell "bb -cp src -e \"
+                          (require '[training-personal-data.core.pipeline :as pipeline])
+                          (require '[training-personal-data.cache :as cache])
+                          (require '[training-personal-data.resilience :as resilience])
+                          (require '[training-personal-data.db :as db])
+                          (require '[cheshire.core :as json])
+                          (println (json/generate-string (pipeline/get-pipeline-health) {:pretty true}))
+                        \""))}
+
+  cache:clear {:doc "Clear all cached data"
+               :task (do
+                       (println "\nClearing cache...")
+                       (shell "bb -cp src -e \"
+                         (require '[training-personal-data.cache :as cache])
+                         (let [cleared (cache/clear!)]
+                           (println (str 'Cleared ' cleared ' cache entries')))
+                       \""))}
+
+  cache:stats {:doc "Show cache statistics"
+               :task (do
+                       (println "\nCache statistics:")
+                       (shell "bb -cp src -e \"
+                         (require '[training-personal-data.cache :as cache])
+                         (require '[cheshire.core :as json])
+                         (println (json/generate-string (cache/get-stats) {:pretty true}))
+                       \""))}
+
+  resilience:stats {:doc "Show resilience statistics (circuit breakers, rate limiters)"
+                    :task (do
+                            (println "\nResilience statistics:")
+                            (shell "bb -cp src -e \"
+                              (require '[training-personal-data.resilience :as resilience])
+                              (require '[cheshire.core :as json])
+                              (println (json/generate-string (resilience/get-resilience-stats) {:pretty true}))
+                            \""))}
+
+  db:pool-stats {:doc "Show database connection pool statistics"
+                 :task (do
+                         (println "\nDatabase pool statistics:")
+                         (shell "bb -cp src -e \"
+                           (require '[training-personal-data.db :as db])
+                           (require '[cheshire.core :as json])
+                           (println (json/generate-string (db/get-pool-stats) {:pretty true}))
+                         \""))}}}
