@@ -1,30 +1,11 @@
 {:paths ["src" "test"]
- :deps {;; Core dependencies (sempre necessárias)
-        org.babashka/http-client {:mvn/version "0.4.15"}
+ :deps {org.babashka/http-client {:mvn/version "0.4.15"}
         cheshire/cheshire {:mvn/version "5.12.0"}
         com.taoensso/timbre {:mvn/version "6.3.1"}
-        
-        ;; ML and Data Analysis (existing - core)
         org.scicloj/noj {:mvn/version "2-beta4"}
         scicloj/tablecloth {:mvn/version "7.021"}
         scicloj/metamorph {:mvn/version "0.2.0"}
-        techascent/tech.ml.dataset {:mvn/version "7.021"}
-        
-        ;; Time utilities (needed for cache and resilience)
-        clj-time/clj-time {:mvn/version "0.15.2"}}
-
- ;; Profiles para diferentes ambientes
- :aliases
- {:web-deps {:extra-deps {;; Web Dashboard Dependencies (optional)
-                          ring/ring-core {:mvn/version "1.9.6"}
-                          ring/ring-jetty-adapter {:mvn/version "1.9.6"}
-                          ring/ring-defaults {:mvn/version "0.3.4"}
-                          ring/ring-json {:mvn/version "0.5.1"}
-                          compojure/compojure {:mvn/version "1.7.0"}
-                          hiccup/hiccup {:mvn/version "2.0.0-RC3"}}}
-  
-  :dev {:extra-deps {;; Development only dependencies
-                     org.clojure/test.check {:mvn/version "1.1.1"}}}}
+        techascent/tech.ml.dataset {:mvn/version "7.021"}}
 
  :tasks
  {:requires ([babashka.fs :as fs])
@@ -53,78 +34,7 @@
                               (shell (format "bb -cp src -m training-personal-data.insights.week %s"
                                              (first args)))))}
 
-  run:dashboard {:doc "Start the web dashboard server (requires web-deps alias)"
-                 :task (do
-                         (println "\nStarting web dashboard...")
-                         (println "Note: Run with 'bb -A:web-deps run:dashboard' for web dependencies")
-                         (shell "bb -A:web-deps -cp src -m training-personal-data.web.dashboard"))}
-
   test {:doc "Run all tests"
         :task (do
                 (println "\nRunning tests...")
-                (shell "bb -cp test:src -m training-personal-data.test-runner"))}
-
-  test:ci {:doc "Run tests suitable for CI environment (no web dependencies)"
-           :task (do
-                   (println "\nRunning CI tests...")
-                   (shell "bb -cp test:src -e \"
-                     (require '[clojure.test :as t])
-                     (require '[training-personal-data.core.pipeline-test])
-                     (require '[training-personal-data.cache-test])
-                     (require '[training-personal-data.ouraring.endpoints.activity.core-test])
-                     (require '[training-personal-data.insights.week-test])
-                     (t/run-tests 'training-personal-data.core.pipeline-test
-                                  'training-personal-data.cache-test
-                                  'training-personal-data.ouraring.endpoints.activity.core-test
-                                  'training-personal-data.insights.week-test)
-                   \""))}
-
-  test:pipeline {:doc "Run pipeline tests only"
-                 :task (do
-                         (println "\nRunning pipeline tests...")
-                         (shell "bb -cp test:src -e \"(require '[training-personal-data.core.pipeline-test]) (clojure.test/run-tests 'training-personal-data.core.pipeline-test)\""))}
-
-  test:working {:doc "Run only working tests"
-                :task (do
-                        (println "\nRunning working tests...")
-                        (shell "bb test:pipeline"))}
-
-  health:check {:doc "Check system health and display statistics"
-                :task (do
-                        (println "\nChecking system health...")
-                        (shell "bb -cp src -e \"
-                          (require '[training-personal-data.core.pipeline :as pipeline])
-                          (require '[training-personal-data.cache :as cache])
-                          (require '[training-personal-data.db :as db])
-                          (require '[cheshire.core :as json])
-                          (println (json/generate-string {:cache (cache/get-stats)
-                                                          :db-pools (db/get-pool-stats)
-                                                          :status 'healthy'} {:pretty true}))
-                        \""))}
-
-  cache:clear {:doc "Clear all cached data"
-               :task (do
-                       (println "\nClearing cache...")
-                       (shell "bb -cp src -e \"
-                         (require '[training-personal-data.cache :as cache])
-                         (let [cleared (cache/clear!)]
-                           (println (str 'Cleared ' cleared ' cache entries')))
-                       \""))}
-
-  cache:stats {:doc "Show cache statistics"
-               :task (do
-                       (println "\nCache statistics:")
-                       (shell "bb -cp src -e \"
-                         (require '[training-personal-data.cache :as cache])
-                         (require '[cheshire.core :as json])
-                         (println (json/generate-string (cache/get-stats) {:pretty true}))
-                       \""))}
-
-  db:pool-stats {:doc "Show database connection pool statistics"
-                 :task (do
-                         (println "\nDatabase pool statistics:")
-                         (shell "bb -cp src -e \"
-                           (require '[training-personal-data.db :as db])
-                           (require '[cheshire.core :as json])
-                           (println (json/generate-string (db/get-pool-stats) {:pretty true}))
-                         \""))}}}
+                (shell "bb -cp test:src -m training-personal-data.test-runner"))}}}

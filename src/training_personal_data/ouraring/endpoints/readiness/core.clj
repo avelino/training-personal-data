@@ -17,11 +17,6 @@
 (defn fetch-and-save
   "Refactored function using the generic pipeline.
    This replaces the old repetitive code with a single pipeline call."
-  [token start-date end-date db-spec]
-  (pipeline/execute-pipeline readiness-config token start-date end-date db-spec))
+  [token start-date end-date & {:keys [mock] :or {mock false}}]
+  (pipeline/execute-pipeline readiness-config token start-date end-date :mock mock))
 
-(defn fetch-and-save-batch
-  "Batch version for better performance with large datasets"
-  [token start-date end-date db-spec & {:keys [batch-size] :or {batch-size 50}}]
-  (pipeline/batch-execute-pipeline readiness-config token start-date end-date db-spec
-                                   :batch-size batch-size))
