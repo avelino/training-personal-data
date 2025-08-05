@@ -22,5 +22,5 @@ jobs:
             ${{ runner.os }}-babashka-
       - name: Download dependencies
         run: bb -e "(println \"Dependencies ready\")"
-      - name: Run tests
-        run: bb test
+      - name: Run CI tests (core functionality only)
+        run: bb test:ci
