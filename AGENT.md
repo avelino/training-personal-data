@@ -101,6 +101,7 @@ WAHOO_REFRESH_TOKEN=your_long_lived_refresh_token
 # (the Wahoo API rotates refresh tokens on refresh).
 WAHOO_REFRESH_TOKEN_FILE=.secrets/wahoo_refresh_token
 ```
+
 Configuration loader: `src/training_personal_data/config.clj` (reads env vars, validates presence).
 
 ## 4) Commands (Babashka tasks)
@@ -156,6 +157,7 @@ Wahoo tables (subset):
   - `minutes integer`, `name text`, `plan_id text NULL`, `workout_token text NULL`, `workout_type_id integer`
   - `workout_summary jsonb` (structured per workout when available)
   - `raw_json jsonb` (raw workout record)
+
 ## 6) Weekly Insights – Rules & Implementation
 
 Namespace: `src/training_personal_data/insights/week.clj`
