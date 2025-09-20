@@ -85,10 +85,16 @@
                              (= col-name "date") (str col-name " = ?::date")
                              (str/ends-with? col-name "_datetime") (str col-name " = ?::timestamp")
                              (= col-name "timestamp") (str col-name " = ?::timestamp")
+                             (or (= col-name "starts")
+                                 (= col-name "created_at")
+                                 (= col-name "updated_at")) (str col-name " = ?::timestamp")
                              (= col-name "tags") (str col-name " = ?::text[]")
                              (or (= col-name "raw_json")
+                                 (= col-name "workout_summary")
                                  (= col-name "met")
                                  (= col-name "day_summary")
+                                 (= col-name "raw_data")
+                                 (= col-name "gpt_metrics_table")
                                  (str/ends-with? col-name "_json")) (str col-name " = ?::jsonb")
                              :else (str col-name " = ?"))))
                        update-columns)
@@ -101,10 +107,16 @@
                              (= % "date") "?::date"
                              (str/ends-with? % "_datetime") "?::timestamp"
                              (= % "timestamp") "?::timestamp"
+                             (or (= % "starts")
+                                 (= % "created_at")
+                                 (= % "updated_at")) "?::timestamp"
                              (= % "tags") "?::text[]"
                              (or (= % "raw_json")
+                                 (= % "workout_summary")
                                  (= % "met")
                                  (= % "day_summary")
+                                 (= % "raw_data")
+                                 (= % "gpt_metrics_table")
                                  (str/ends-with? % "_json")) "?::jsonb"
                              :else "?")
                           normalized-columns)]
@@ -124,10 +136,12 @@
           (log/debug {:event :db-save :action :update :table table :id id})
           (let [sql (build-update-sql table columns)
                 update-values (vec (concat (rest values) [id]))]
+            (log/debug {:event :db-save :action :update-sql :sql sql})
             (pg/execute! db-spec (into [sql] update-values))))
         (do
           (log/debug {:event :db-save :action :insert :table table :id id})
           (let [sql (build-insert-sql table columns)]
+            (log/debug {:event :db-save :action :insert-sql :sql sql :values (pr-str values)})
             (pg/execute! db-spec (into [sql] values)))))
       (catch Exception e
         (log/error {:event :db-save :action :error :table table :id id :error (ex-message e)})

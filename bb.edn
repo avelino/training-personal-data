@@ -32,6 +32,13 @@
                        (shell (format "bb -cp src -m training-personal-data.wahoo %s %s"
                                       (first args) (second args)))))}
 
+  run:week-insight {:doc "Generate weekly insights from Oura Ring data using GPT"
+                    :task (do
+                            (println "\nGenerating weekly insights from Oura Ring data")
+                            (let [args *command-line-args*]
+                              (shell (format "bb -cp src -m training-personal-data.insights.week %s"
+                                             (first args)))))}
+
   test {:doc "Run all tests"
         :task (do
                 (println "\nRunning tests...")
