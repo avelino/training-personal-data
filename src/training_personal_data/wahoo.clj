@@ -11,7 +11,7 @@
   (try
     (let [raw-token (System/getenv "WAHOO_TOKEN")
           env-refresh (System/getenv "WAHOO_REFRESH_TOKEN")
-          refresh-file (or (System/getenv "WAHOO_REFRESH_TOKEN_FILE") ".secrets/wahoo_refresh_token")
+          refresh-file (System/getenv "WAHOO_REFRESH_TOKEN_FILE")
           file-refresh (try
                          (when (.exists (io/file refresh-file))
                            (let [s (str/trim (slurp refresh-file))]
@@ -41,12 +41,15 @@
                                         :msg "Failed to persist rotated refresh_token"
                                         :error (ex-message e)
                                         :file refresh-file})))
-                        (log/info {:event :oauth-refresh-rotate
-                                   :msg "Received new refresh_token. Set WAHOO_REFRESH_TOKEN_FILE to persist automatically."})))
+                        (do
+                          (log/warn {:event :oauth-refresh-rotate
+                                     :msg "Refresh token rotated. Update your WAHOO_REFRESH_TOKEN environment variable for future runs."})
+                          (println (str "UPDATE_ENV_WAHOO_REFRESH_TOKEN=" new-refresh)))))
                     access)
 
-                  ;; First-run bootstrap with authorization code
-                  (and client-id client-secret (System/getenv "WAHOO_AUTH_CODE") (System/getenv "WAHOO_REDIRECT_URI"))
+                  ;; First-run bootstrap with authorization code (disabled on CI/non-interactive)
+                  (and (not (= (System/getenv "CI") "true"))
+                       client-id client-secret (System/getenv "WAHOO_AUTH_CODE") (System/getenv "WAHOO_REDIRECT_URI"))
                   (let [code (System/getenv "WAHOO_AUTH_CODE")
                         redirect (System/getenv "WAHOO_REDIRECT_URI")
                         resp (wahoo-api/exchange-authorization-code client-id client-secret code redirect)
@@ -67,8 +70,10 @@
                                         :msg "Failed to persist initial refresh_token"
                                         :error (ex-message e)
                                         :file refresh-file})))
-                        (log/info {:event :oauth-authcode-persist
-                                   :msg "Obtained refresh_token. Set WAHOO_REFRESH_TOKEN_FILE to persist automatically."})))
+                        (do
+                          (log/warn {:event :oauth-authcode-persist
+                                     :msg "Obtained refresh_token. Update your WAHOO_REFRESH_TOKEN environment variable for future runs."})
+                          (println (str "UPDATE_ENV_WAHOO_REFRESH_TOKEN=" new-refresh)))))
                     access)
 
                   ;; Fallback: direct token
