@@ -1,8 +1,8 @@
 (ns training-personal-data.ouraring.endpoints.activity.core-test
   (:require [clojure.test :refer [deftest testing is]]
             [training-personal-data.ouraring.endpoints.activity.core :as core]
-            [training-personal-data.ouraring.endpoints.activity.api :as api]
             [training-personal-data.ouraring.endpoints.activity.db :as activity-db]
+            [training-personal-data.ouraring.api :as oura-api]
             [training-personal-data.db :as db]))
 
 (def sample-api-response
@@ -35,22 +35,22 @@
            :target_meters 8000
            :total_calories 2400}]})
 
-(defn mock-fetch [token endpoint start-date end-date]
+(defn mock-fetch [_ _ _ _]
   sample-api-response)
 
 (def saved-records (atom []))
 
-(defn mock-save [_ table-name columns record values]
+(defn mock-save [_ _ _ record _]
   (swap! saved-records conj record)
   {:success true})
 
-(defn mock-create-table [_ table-name schema]
+(defn mock-create-table [_ _ _]
   {:success true})
 
 (deftest test-fetch-and-save
   (testing "fetch and save activity data using refactored pipeline"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.api/fetch-data mock-fetch
+    (with-redefs [oura-api/fetch-data mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
       ;; Execute fetch-and-save with new pipeline
@@ -82,7 +82,7 @@
 (deftest test-fetch-and-save-batch
   (testing "batch processing for activity data"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.endpoints.activity.api/fetch mock-fetch
+    (with-redefs [oura-api/fetch-data mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
       ;; Execute batch fetch-and-save
