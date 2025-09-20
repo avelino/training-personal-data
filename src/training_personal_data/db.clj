@@ -85,8 +85,12 @@
                              (= col-name "date") (str col-name " = ?::date")
                              (str/ends-with? col-name "_datetime") (str col-name " = ?::timestamp")
                              (= col-name "timestamp") (str col-name " = ?::timestamp")
+                             (or (= col-name "starts")
+                                 (= col-name "created_at")
+                                 (= col-name "updated_at")) (str col-name " = ?::timestamp")
                              (= col-name "tags") (str col-name " = ?::text[]")
                              (or (= col-name "raw_json")
+                                 (= col-name "workout_summary")
                                  (= col-name "met")
                                  (= col-name "day_summary")
                                  (= col-name "raw_data")
@@ -103,8 +107,12 @@
                              (= % "date") "?::date"
                              (str/ends-with? % "_datetime") "?::timestamp"
                              (= % "timestamp") "?::timestamp"
+                             (or (= % "starts")
+                                 (= % "created_at")
+                                 (= % "updated_at")) "?::timestamp"
                              (= % "tags") "?::text[]"
                              (or (= % "raw_json")
+                                 (= % "workout_summary")
                                  (= % "met")
                                  (= % "day_summary")
                                  (= % "raw_data")

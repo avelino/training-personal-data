@@ -1,8 +1,8 @@
 (ns training-personal-data.ouraring.endpoints.sleep.core-test
   (:require [clojure.test :refer [deftest testing is]]
             [training-personal-data.ouraring.endpoints.sleep.core :as core]
-            [training-personal-data.ouraring.endpoints.sleep.api :as api]
             [training-personal-data.ouraring.endpoints.sleep.db :as sleep-db]
+            [training-personal-data.ouraring.api :as oura-api]
             [training-personal-data.db :as db]))
 
 (def sample-api-response
@@ -18,22 +18,22 @@
                           :timing 82
                           :total_sleep 480}}]})
 
-(defn mock-fetch [token endpoint start-date end-date]
+(defn mock-fetch [_ _ _ _]
   sample-api-response)
 
 (def saved-records (atom []))
 
-(defn mock-save [_ table-name columns record values]
+(defn mock-save [_ _ _ record _]
   (swap! saved-records conj record)
   {:success true})
 
-(defn mock-create-table [_ table-name schema]
+(defn mock-create-table [_ _ _]
   {:success true})
 
 (deftest test-fetch-and-save
   (testing "fetch and save sleep data using refactored pipeline"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.api/fetch-data mock-fetch
+    (with-redefs [oura-api/fetch-data mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
       ;; Execute fetch-and-save with new pipeline
@@ -63,13 +63,13 @@
 (deftest test-fetch-and-save-batch
   (testing "batch processing for sleep data"
     (reset! saved-records [])
-    (with-redefs [training-personal-data.ouraring.api/fetch-data mock-fetch
+    (with-redefs [oura-api/fetch-data mock-fetch
                   training-personal-data.db/save mock-save
                   training-personal-data.db/create-table mock-create-table]
-        ;; Execute batch fetch-and-save
+      ;; Execute batch fetch-and-save
       (core/fetch-and-save-batch "test-token" "2024-01-07" "2024-01-08" {} :batch-size 1)
 
-        ;; Verify data was saved
+      ;; Verify data was saved
       (let [saved-record (first @saved-records)]
         (is (some? saved-record))
         (is (= "123" (:id saved-record)))))))

@@ -2,7 +2,7 @@ name: Cron
 
 on:
   schedule:
-    - cron: '0 */3 * * *'
+    - cron: "0 */3 * * *"
   workflow_dispatch:
 
 jobs:
@@ -17,13 +17,18 @@ jobs:
           babashka-version: 1.12.196
       - name: Sync Oura Ring data
         env:
-          OURA_TOKEN: '${{ secrets.OURA_TOKEN }}'
-          SUPABASE_HOST: '${{ secrets.SUPABASE_HOST }}'
-          SUPABASE_PASSWORD: '${{ secrets.SUPABASE_PASSWORD }}'
-          SUPABASE_PORT: '${{ secrets.SUPABASE_PORT }}'
-          SUPABASE_USER: '${{ secrets.SUPABASE_USER }}'
-          SUPABASE_DB_NAME: '${{ secrets.SUPABASE_DB_NAME }}'
+          OURA_TOKEN: "${{ secrets.OURA_TOKEN }}"
+          SUPABASE_HOST: "${{ secrets.SUPABASE_HOST }}"
+          SUPABASE_PASSWORD: "${{ secrets.SUPABASE_PASSWORD }}"
+          SUPABASE_PORT: "${{ secrets.SUPABASE_PORT }}"
+          SUPABASE_USER: "${{ secrets.SUPABASE_USER }}"
+          SUPABASE_DB_NAME: "${{ secrets.SUPABASE_DB_NAME }}"
+          WAHOO_AUTH_CODE: "${{ secrets.WAHOO_AUTH_CODE }}"
+          WAHOO_CLIENT_ID: "${{ secrets.WAHOO_CLIENT_ID }}"
+          WAHOO_CLIENT_SECRET: "${{ secrets.WAHOO_CLIENT_SECRET }}"
+          WAHOO_REDIRECT_URI: "${{ secrets.WAHOO_REDIRECT_URI }}"
         run: |
           START_DATE=$(date -d "yesterday" '+%Y-%m-%d')
           END_DATE=$(date '+%Y-%m-%d')
           bb run:oura $START_DATE $END_DATE
+          bb run:wahoo $START_DATE $END_DATE

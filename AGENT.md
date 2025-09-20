@@ -10,7 +10,7 @@ Training Personal Data collects and analyzes personal health/fitness data, with 
 
 - Language/runtime: Clojure (Babashka)
 - Database: PostgreSQL (Supabase-compatible)
-- Sources: Oura Ring REST APIs (daily activity, sleep, readiness, heart rate, workouts, tags)
+- Sources: Oura Ring REST APIs (daily activity, sleep, readiness, heart rate, workouts, tags); Wahoo (workouts)
 - Storage: Normalized tables (+ raw JSON)
 - Insights: Weekly aggregation + GPT analysis persisted to DB
 - Automation: GitHub Actions for periodic sync and weekly insights
@@ -50,7 +50,7 @@ flowchart LR
 ```mermaid
 flowchart LR
   CFG[Endpoint Config (data)] --> PIPE[Generic Pipeline]
-  PIPE -->|fetch-fn| FETCH[Fetch Oura data]
+  PIPE -->|fetch-fn| FETCH[Fetch endpoint data]
   PIPE -->|normalize-fn| TRANSFORM[Normalize records]
   PIPE -->|ensure-table| SCHEMA[Create-if-not-exists]
   PIPE -->|extract-values-fn| SAVE[Batch save]
@@ -80,6 +80,7 @@ Create a .env file at repository root:
 
 ```env
 OURA_TOKEN=your_oura_ring_api_token
+WAHOO_TOKEN=your_wahoo_api_token
 SUPABASE_HOST=your_database_host
 SUPABASE_PORT=5432
 SUPABASE_USER=postgres
@@ -88,12 +89,32 @@ SUPABASE_DB_NAME=your_database_name
 OPENAI_API_KEY=your_openai_api_key
 ```
 
+Wahoo OAuth auto-refresh (optional but recommended for CLI tasks):
+
+```env
+# If set, the runner will refresh an access token at startup using these:
+WAHOO_CLIENT_ID=your_wahoo_client_id
+WAHOO_CLIENT_SECRET=your_wahoo_client_secret
+WAHOO_REFRESH_TOKEN=your_long_lived_refresh_token
+
+# Optional path to persist rotated refresh_token automatically on each run
+# (the Wahoo API rotates refresh tokens on refresh).
+WAHOO_REFRESH_TOKEN_FILE=.secrets/wahoo_refresh_token
+```
 Configuration loader: `src/training_personal_data/config.clj` (reads env vars, validates presence).
 
 ## 4) Commands (Babashka tasks)
 
 - Sync Oura Ring data for a range:
   - `bb run:oura "YYYY-MM-DD" "YYYY-MM-DD"`
+- Sync Wahoo workouts for a date range (uses WAHOO_TOKEN env). If
+  `WAHOO_REFRESH_TOKEN`, `WAHOO_CLIENT_ID`, and `WAHOO_CLIENT_SECRET` are set,
+  the task will auto-refresh a new access token on startup and use it for the run.
+  - `bb run:wahoo "YYYY-MM-DD" "YYYY-MM-DD"`
+  - First run without a refresh token: provide an authorization code to bootstrap
+    and persist the refresh token
+    - Required envs for bootstrap: `WAHOO_CLIENT_ID`, `WAHOO_CLIENT_SECRET`,
+      `WAHOO_AUTH_CODE`, `WAHOO_REDIRECT_URI` and optionally `WAHOO_REFRESH_TOKEN_FILE`
 - Generate weekly insights (for a date inside the target week):
   - `bb -m training-personal-data.insights.week YYYY-MM-DD`
 - Run tests:
@@ -109,6 +130,7 @@ Created automatically on demand. Core tables:
 - `ouraring_heart_rate`
 - `ouraring_workout`
 - `ouraring_tags`
+- `wahoo_workout`
 
 Weekly insights output table:
 
@@ -126,6 +148,14 @@ Weekly insights output table:
   - `gpt_cross_data_insight text`
   - `raw_data jsonb` (raw weekly aggregates for traceability)
 
+Wahoo tables (subset):
+
+- `wahoo_workout` with columns (subset shown):
+  - `id text` (primary key)
+  - `starts timestamp`, `created_at timestamp`, `updated_at timestamp`
+  - `minutes integer`, `name text`, `plan_id text NULL`, `workout_token text NULL`, `workout_type_id integer`
+  - `workout_summary jsonb` (structured per workout when available)
+  - `raw_json jsonb` (raw workout record)
 ## 6) Weekly Insights – Rules & Implementation
 
 Namespace: `src/training_personal_data/insights/week.clj`
@@ -189,6 +219,9 @@ Persistence:
 - Logging: structured maps with `:event` plus salient fields.
 - SQL: cast parameter types explicitly when comparing with `timestamp` (e.g., `?::timestamp`).
 - Persist JSON as JSONB with explicit `?::jsonb` casts.
+- DB layer enforces casts automatically for common columns:
+  - Timestamps: `starts`, `created_at`, `updated_at` → `?::timestamp`
+  - JSON: `raw_json`, `workout_summary`, `raw_data`, `gpt_metrics_table`, and any `*_json` → `?::jsonb`
 
 ## 11) Troubleshooting
 
@@ -198,9 +231,15 @@ Persistence:
 - Error: `column "raw_data"/"gpt_metrics_table" is of type jsonb but expression is of type character varying`
   - Cause: string not cast to JSONB
   - Fix: use `?::jsonb` in SQL and provide valid JSON string
+- Error: `column "workout_summary" is of type jsonb but expression is of type character varying`
+  - Cause: providing a JSON string without JSONB cast
+  - Fix: the DB layer already casts this column to `?::jsonb`; ensure the value is a valid JSON string
 - Error: `operator does not exist: timestamp without time zone >= character varying`
   - Cause: comparing timestamp column with string parameter
   - Fix: cast parameters: `WHERE timestamp >= ?::timestamp AND timestamp <= ?::timestamp`
+- Error: `column "starts" is of type timestamp without time zone but expression is of type character varying`
+  - Cause: inserting ISO8601 string without cast
+  - Fix: the DB layer now casts `starts`/`created_at`/`updated_at` to `?::timestamp`
 - Sleep duration shows ~0 hours
   - Causes: zeros included in average; minutes not converted to hours
   - Fix: `AVG(CASE WHEN total_sleep > 0 THEN total_sleep ELSE NULL END)/60`
