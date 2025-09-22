@@ -2,11 +2,12 @@
 
 Turn your wearable data into actionable health insights.
 
-This project syncs Oura Ring data into PostgreSQL and generates Weekly Health Insights using SQL + GPT. It stores normalized metrics and structured AI analysis so you can query trends, build dashboards, and automate feedback loops.
+This project syncs Oura Ring and Wahoo data into PostgreSQL and generates Weekly Health Insights using SQL + GPT. It stores normalized metrics and structured AI analysis so you can query trends, build dashboards, and automate feedback loops.
 
 ## What it does
 
-- Sync Oura Ring: Activity, Sleep, Readiness, Heart Rate, Workouts, Tags
+- Sync Oura Ring (activity, sleep, readiness, heart rate, workouts, tags)
+- Sync Wahoo workouts
 - Normalize and store daily metrics (+ raw JSON)
 - Compute Monday→Sunday weekly insights
 - Generate, parse, and persist AI analysis (text + JSONB)
@@ -25,6 +26,12 @@ bb run:oura "2024-01-01" "2024-12-31"
 
 ```bash
 bb -m training-personal-data.insights.week 2024-12-30
+```
+
+3) Sync Wahoo workouts (requires Wahoo OAuth client + tokens):
+
+```bash
+bb run:wahoo "2024-09-01" "2024-09-30"
 ```
 
 4) Run tests:
