@@ -23,15 +23,19 @@
 (defn refresh-access-token
   "Exchange a refresh token for a new access token (and refresh token).
   Returns a map {:access_token ... :refresh_token ... :expires_in ... :scope ...} on success.
-  Throws ex-info on failure."
-  [client-id client-secret refresh-token]
+  Throws ex-info on failure. Pass nil for redirect-uri if not required."
+  [client-id client-secret refresh-token redirect-uri]
   (log/info {:event :oauth-refresh-start :msg "Refreshing Wahoo access token"})
-  (let [response (http/post oauth-token-url
+  (let [base-params {"client_id" client-id
+                     "client_secret" client-secret
+                     "grant_type" "refresh_token"
+                     "refresh_token" refresh-token}
+        form-params (if (some? redirect-uri)
+                      (assoc base-params "redirect_uri" redirect-uri)
+                      base-params)
+        response (http/post oauth-token-url
                             {:headers {"Content-Type" "application/x-www-form-urlencoded"}
-                             :form-params {"client_id" client-id
-                                           "client_secret" client-secret
-                                           "grant_type" "refresh_token"
-                                           "refresh_token" refresh-token}})
+                             :form-params form-params})
         {:keys [status body]} response]
     (if (= status 200)
       (let [data (json/parse-string body true)
@@ -75,7 +79,8 @@
         (throw (ex-info "Failed to exchange authorization code"
                         {:status status :body body}))))))
 
-(defn fetch-workouts-by-date [token start-date end-date]
+(defn fetch-workouts-by-date
+  [token start-date end-date]
   (log/info {:event :api-fetch :msg "Fetching workouts by date range"
              :start start-date :end end-date})
   (let [url (str host "/workouts")

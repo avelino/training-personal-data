@@ -97,25 +97,39 @@ WAHOO_CLIENT_ID=your_wahoo_client_id
 WAHOO_CLIENT_SECRET=your_wahoo_client_secret
 WAHOO_REFRESH_TOKEN=your_long_lived_refresh_token
 
-# Optional path to persist rotated refresh_token automatically on each run
-# (the Wahoo API rotates refresh tokens on refresh).
-WAHOO_REFRESH_TOKEN_FILE=.secrets/wahoo_refresh_token
+# Refresh tokens rotate on each refresh. The sync stores the latest tokens in Postgres
+# (`wahoo_oauth_tokens` table) so no manual secret updates are required after bootstrap.
 ```
 
 Configuration loader: `src/training_personal_data/config.clj` (reads env vars, validates presence).
+
+
+### Wahoo OAuth bootstrap & persistence
+
+- Tokens are cached in Postgres (`wahoo_oauth_tokens`, columns: `id`, `provider`, `access_token`, `refresh_token`, `expires_at_epoch`, `raw_json`).
+- Sync order: use the persisted row first (logs show `:token_source :stored-cache`), then fall back to `WAHOO_REFRESH_TOKEN`, then `WAHOO_AUTH_CODE`, and finally a one-off `WAHOO_TOKEN`.
+- First-time/repair flow: set `WAHOO_CLIENT_ID`, `WAHOO_CLIENT_SECRET`, `WAHOO_REDIRECT_URI`, and a fresh single-use `WAHOO_AUTH_CODE`, run `bb run:wahoo ...`, and the pipeline will exchange and persist the rotating tokens. Remove `WAHOO_AUTH_CODE` afterwards.
+- Routine runs (local or cron) only require the client id/secret (+ redirect URI). You may unset `WAHOO_REFRESH_TOKEN`; the job will refresh from the database on each execution.
+- To reset, delete the `default` row and bootstrap again.
+- Observability: look for `:token_source` in the logs to confirm the credential path; `:wahoo-token-save` events include the computed expiry epoch.
+
+### Wahoo pipeline resilience
+
+- Workout ingestion retries transient Supabase errors (`connection attempt failed`, `connection reset`, etc.) three times with exponential backoff; failures emit `:db-transient-error` logs before a retry.
+- All DB responses are normalised before persistence, ensuring JSON `raw_json` columns stay consistent across refresh cycles.
 
 ## 4) Commands (Babashka tasks)
 
 - Sync Oura Ring data for a range:
   - `bb run:oura "YYYY-MM-DD" "YYYY-MM-DD"`
-- Sync Wahoo workouts for a date range (uses WAHOO_TOKEN env). If
-  `WAHOO_REFRESH_TOKEN`, `WAHOO_CLIENT_ID`, and `WAHOO_CLIENT_SECRET` are set,
-  the task will auto-refresh a new access token on startup and use it for the run.
+- Sync Wahoo workouts for a date range (prefers persisted OAuth tokens). If you provide
+  `WAHOO_REFRESH_TOKEN`, `WAHOO_CLIENT_ID`, and `WAHOO_CLIENT_SECRET`, the runner refreshes the
+  token automatically and persists the rotated credentials to Postgres for subsequent runs.
   - `bb run:wahoo "YYYY-MM-DD" "YYYY-MM-DD"`
   - First run without a refresh token: provide an authorization code to bootstrap
     and persist the refresh token
     - Required envs for bootstrap: `WAHOO_CLIENT_ID`, `WAHOO_CLIENT_SECRET`,
-      `WAHOO_AUTH_CODE`, `WAHOO_REDIRECT_URI` and optionally `WAHOO_REFRESH_TOKEN_FILE`
+      `WAHOO_AUTH_CODE`, `WAHOO_REDIRECT_URI`
 - Generate weekly insights (for a date inside the target week):
   - `bb -m training-personal-data.insights.week YYYY-MM-DD`
 - Run tests:
