@@ -13,6 +13,7 @@ This project syncs Oura Ring and Wahoo data into PostgreSQL and generates Weekly
 - Generate, parse, and persist AI analysis (text + JSONB)
 - Automate weekly insights via GitHub Actions
 
+
 ## Quick start
 
 1) Set environment variables in a `.env` file (DB + Oura + OpenAI)
