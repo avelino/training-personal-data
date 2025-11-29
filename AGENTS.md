@@ -17,7 +17,7 @@ Training Personal Data collects and analyzes personal health/fitness data, with 
 
 ```
 Oura API → ETL (bb tasks) → Postgres (normalized + raw JSON)
-                           → Weekly insights (SQL + GPT) → ouraring_weekly_insights
+                          → Weekly insights (SQL + GPT) → ouraring_weekly_insights
 ```
 
 ## 2.1) Architecture diagrams
@@ -87,6 +87,12 @@ SUPABASE_USER=postgres
 SUPABASE_PASSWORD=your_database_password
 SUPABASE_DB_NAME=your_database_name
 OPENAI_API_KEY=your_openai_api_key
+ROAM_API_TOKEN=your_roam_api_token
+ROAM_GRAPH=your_roam_graph_slug
+# Optional: only for encrypted graphs
+ROAM_GRAPH_PASSWORD=your_roam_graph_password
+# Optional: defaults to "oura"
+ROAM_PAGE_PREFIX=oura
 ```
 
 Wahoo OAuth auto-refresh (optional but recommended for CLI tasks):
@@ -131,6 +137,9 @@ Configuration loader: `src/training_personal_data/config.clj` (reads env vars, v
       `WAHOO_AUTH_CODE`, `WAHOO_REDIRECT_URI`
 - Generate weekly insights (for a date inside the target week):
   - `bb -m training-personal-data.insights.week YYYY-MM-DD`
+- Export Oura data to Roam (single date or range):
+  - `bb run:roam-oura "YYYY-MM-DD"`
+  - `bb run:roam-oura "YYYY-MM-DD" "YYYY-MM-DD"`
 - Run tests:
   - `bb test`
 
@@ -266,7 +275,29 @@ Persistence:
 - Ensure English-only text and structured logging
 - Open PR with clear title/summary (see example in previous PR templates)
 
-## 13) Roadmap (suggested)
+## 13) Roam Research Export
+
+- Namespace: `src/training_personal_data/export/roam.clj` orchestrates the data pull from Postgres, builds the bullet hierarchy, and synchronizes it with Roam.
+- Client: `src/training_personal_data/export/roam/api.clj` wraps the official backend API. It preserves the host advertised by Roam (`peer-XX`) and sends the required headers:
+  - `Authorization` / `x-authorization`: `Bearer <ROAM_API_TOKEN>`
+  - `x-graph`: graph slug (e.g., `avelino`)
+  - `x-graph-key`: graph password (only for encrypted graphs; omit otherwise)
+- Environment:
+  - Mandatory: `ROAM_API_TOKEN`, `ROAM_GRAPH`
+  - Optional (encrypted graphs): `ROAM_GRAPH_PASSWORD`
+  - Optional: `ROAM_PAGE_PREFIX` (defaults to `oura`)
+- Bullet layout:
+  - Root: `#ouraring [[November 29th, 2025]]`
+  - Children: `Sleep`, `Readiness`, `Activity`, `Heart rate`, `Workouts` (omitted when no data)
+  - Each child lists `Label: value` bullets or workout entries (`HH:MM – Activity (duration, calories, …)`).
+- State tracking: table `roam_exports` stores `id`, `page_uid`, block UID map, and a payload hash. The exporter skips updates when the hash matches.
+- CLI usage:
+  - `bb run:roam-oura 2025-11-29`
+  - `bb run:roam-oura 2025-11-01 2025-11-07`
+- Logs to monitor: `:roam-export-start`, `:roam-sync`, `:heart-rate-table-missing`, `:roam-cli-complete`, `:roam-cli-error`.
+- Security tips: keep Roam secrets in GitHub Actions secrets; never commit them. For curl/debugging, include the same headers the exporter sends.
+
+## 14) Roadmap (suggested)
 
 - Add monthly insights and trend analysis
 - Build lightweight dashboard (charts of scores/duration)
