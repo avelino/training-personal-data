@@ -33,6 +33,18 @@
                             (let [args *command-line-args*]
                               (shell (format "bb -cp src -m training-personal-data.insights.week %s"
                                              (first args)))))}
+  run:roam-oura {:doc "Export Oura data from Postgres to Roam pages"
+                 :task (do
+                         (println "\nExporting Oura data to Roam")
+                         (let [args *command-line-args*
+                               start (first args)
+                               end (or (second args) start)]
+                           (when (nil? start)
+                             (throw (ex-info "Usage: bb run:roam-oura <date> [<end-date>]" {})))
+                           (let [cmd (if (= start end)
+                                       (format "bb -cp src -m training-personal-data.export.roam %s" start)
+                                       (format "bb -cp src -m training-personal-data.export.roam %s %s" start end))]
+                             (shell cmd))))}
   run:wahoo {:doc "Run wahoo endpoint with date range (YYYY-MM-DD YYYY-MM-DD)"
              :task (do
                      (println "\nRun wahoo endpoint")

@@ -103,7 +103,6 @@ WAHOO_REFRESH_TOKEN=your_long_lived_refresh_token
 
 Configuration loader: `src/training_personal_data/config.clj` (reads env vars, validates presence).
 
-
 ### Wahoo OAuth bootstrap & persistence
 
 - Tokens are cached in Postgres (`wahoo_oauth_tokens`, columns: `id`, `provider`, `access_token`, `refresh_token`, `expires_at_epoch`, `raw_json`).

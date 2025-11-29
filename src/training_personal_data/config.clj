@@ -13,3 +13,16 @@
                                    (dissoc :password)
                                    (assoc :password "[REDACTED]"))})))
     config))
+
+(defn get-roam-config []
+  (let [token (System/getenv "ROAM_API_TOKEN")
+        graph (System/getenv "ROAM_GRAPH")
+        graph-password (System/getenv "ROAM_GRAPH_PASSWORD")]
+    (when (and token graph)
+      {:token token
+       :graph graph
+       :page-prefix (or (System/getenv "ROAM_PAGE_PREFIX") "oura")
+       :graph-password graph-password})))
+
+(defn roam-enabled? []
+  (boolean (get-roam-config)))

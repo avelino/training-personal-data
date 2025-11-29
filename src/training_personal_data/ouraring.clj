@@ -7,6 +7,7 @@
             [training-personal-data.ouraring.config :as oura-config]
             [training-personal-data.core.pipeline :as pipeline]
             [training-personal-data.db :as db]
+            [training-personal-data.export.roam :as roam-export]
             [taoensso.timbre :as log]))
 
 (defn validate-env []
@@ -192,7 +193,17 @@
               (when (seq failed)
                 (println "\n⚠️  Some endpoints failed:")
                 (doseq [failure failed]
-                  (println "  -" (:endpoint failure) ":" (:error failure))))))))
+                  (println "  -" (:endpoint failure) ":" (:error failure))))
+
+              (when (empty? failed)
+                (if-let [roam-config (config/get-roam-config)]
+                  (do
+                    (log/info {:event :roam-export-trigger
+                               :start start-date
+                               :end end-date})
+                    (roam-export/export-range! roam-config db-spec start-date end-date))
+                  (log/info {:event :roam-export-skip
+                             :reason "Missing Roam configuration"})))))))
 
       (log/info {:event :complete :msg "Successfully completed Oura Ring data sync"}))
 
